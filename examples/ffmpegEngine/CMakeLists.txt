@@ -34,6 +34,6 @@ link_directories("${STRINGUTILS_LIB_DIR}")
 
 add_executable(ffmpegEngine ${SOURCES} ${HEADERS})
 
-target_link_libraries (ffmpegEngine StringUtils)
 target_link_libraries (ffmpegEngine FFMpegEngine)
+target_link_libraries (ffmpegEngine StringUtils)
 
