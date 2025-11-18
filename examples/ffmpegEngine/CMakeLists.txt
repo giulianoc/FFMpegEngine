@@ -30,8 +30,10 @@ SET (HEADERS
 #include_directories("${NLOHMANN_INCLUDE_DIR}")
 #include_directories("${SPDLOG_INCLUDE_DIR}")
 #include_directories("${FFMPEGENGINE_INCLUDE_DIR}")
+link_directories("${STRINGUTILS_LIB_DIR}")
 
 add_executable(ffmpegEngine ${SOURCES} ${HEADERS})
 
+target_link_libraries (ffmpegEngine StringUtils)
 target_link_libraries (ffmpegEngine FFMpegEngine)
 
