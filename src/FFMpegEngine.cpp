@@ -135,12 +135,6 @@ FFMpegEngine& FFMpegEngine::addGlobalArgs(const string& parameters)
     return *this;
 }
 
-FFMpegEngine& FFMpegEngine::setUserAgent(const string_view& ua) {
-	if (!StringUtils::trim(ua).empty())
-		_userAgent = string(StringUtils::trim(ua));
-	return *this;
-}
-
 FFMpegEngine::Input& FFMpegEngine::addInput(const string_view source) {
 	_inputs.emplace_back(source);
 	return _inputs.back();

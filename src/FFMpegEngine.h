@@ -6,7 +6,6 @@
 #include <vector>
 #include <optional>
 #include <functional>
-#include <atomic>
 #include <thread>
 
 using namespace std;
@@ -59,8 +58,6 @@ public:
 
     FFMpegEngine() = default;
 
-	FFMpegEngine& setUserAgent(const string_view& ua);
-
     // builder
     FFMpegEngine& addGlobalArg(const string_view &a);
 	FFMpegEngine& addGlobalArgs(const string& parameters);
@@ -100,7 +97,6 @@ public:
 	[[nodiscard]] string toSingleLine() const;
 
 private:
-	optional<string> _userAgent;
     vector<Input> _inputs;
     vector<Output> _outputs;
     vector<string> _filterComplex;
