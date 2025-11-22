@@ -108,7 +108,8 @@ void FFMpegEngine::Output::buildArgs(vector<string>& args) const
 	}
 	for (auto& extraArg : _extraArgs)
 		args.emplace_back(extraArg);
-	args.emplace_back(_path);
+	if (!_path.empty())
+		args.emplace_back(_path);
 }
 
 string FFMpegEngine::Output::toSingleLine() const
@@ -333,4 +334,15 @@ string FFMpegEngine::toPrettyString(const int indentSpaces) const {
 std::string FFMpegEngine::toSingleLine() const {
 
 	return build();
+}
+
+void FFMpegEngine::reset()
+{
+	_inputs.clear();
+	_outputs.clear();
+	_filterComplex.clear();
+	_globalArgs.clear();
+	_hwAccel = nullptr;
+	_vaapiDevice = nullopt;
+	_durationMilliSeconds = nullopt;
 }

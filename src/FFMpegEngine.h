@@ -96,6 +96,8 @@ public:
 	[[nodiscard]] string toPrettyString(int indentSpaces = 2) const;
 	[[nodiscard]] string toSingleLine() const;
 
+	void reset();
+
 private:
     vector<Input> _inputs;
     vector<Output> _outputs;
