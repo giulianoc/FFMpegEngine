@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <queue>
 #include <optional>
 #include <functional>
 #include <thread>
