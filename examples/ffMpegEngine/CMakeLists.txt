@@ -28,7 +28,7 @@ SET (HEADERS
 )
 
 include_directories("${NLOHMANN_INCLUDE_DIR}")
-#include_directories("${SPDLOG_INCLUDE_DIR}")
+include_directories("${SPDLOG_INCLUDE_DIR}")
 #include_directories("${FFMPEGENGINE_INCLUDE_DIR}")
 link_directories("${STRINGUTILS_LIB_DIR}")
 include_directories("${PROCESSUTILITY_INCLUDE_DIR}")
