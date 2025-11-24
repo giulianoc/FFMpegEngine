@@ -1,5 +1,6 @@
 
 #include "FFMpegEngine.h"
+#include "spdlog/spdlog.h"
 #include "StringUtils.h"
 #include <chrono>
 #include <cstring>
@@ -116,12 +117,22 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 {
 	if (clientCallbackData)
 	{
+		SPDLOG_INFO("run (client callback)"
+			", ffmpegPath: {}"
+			"{}"
+			", outputFfmpegPathFileName: {}", ffmpegPath, referenceToLog, outputFfmpegPathFileName
+			);
 		_clientCallbackData = clientCallbackData;
 		if (!outputFfmpegPathFileName.empty())
 			_clientCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
 	}
 	else
 	{
+		SPDLOG_INFO("run (internal callback)"
+			", ffmpegPath: {}"
+			"{}"
+			", outputFfmpegPathFileName: {}", ffmpegPath, referenceToLog, outputFfmpegPathFileName
+			);
 		_clientCallbackData = nullptr;
 		_internalCallbackData->reset();
 		_internalCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
@@ -137,6 +148,9 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 {
 	try
 	{
+		SPDLOG_INFO("ffmpegLineCallback"
+			", ffmpegLine: {}", ffmpegLine
+			);
 		shared_ptr<CallbackData> callbackData = _clientCallbackData ? _clientCallbackData : _internalCallbackData;
 
 		// la prima chiamata ricevuta setta finished a false
