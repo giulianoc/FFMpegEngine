@@ -31,9 +31,11 @@ include_directories("${NLOHMANN_INCLUDE_DIR}")
 #include_directories("${SPDLOG_INCLUDE_DIR}")
 #include_directories("${FFMPEGENGINE_INCLUDE_DIR}")
 link_directories("${STRINGUTILS_LIB_DIR}")
+include_directories("${PROCESSUTILITY_INCLUDE_DIR}")
 
 add_executable(ffMpegEngine ${SOURCES} ${HEADERS})
 
 target_link_libraries (ffMpegEngine FFMpegEngine)
 target_link_libraries (ffMpegEngine StringUtils)
+target_link_libraries (ffMpegEngine ProcessUtility)
 
