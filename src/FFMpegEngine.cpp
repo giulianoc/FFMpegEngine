@@ -145,7 +145,7 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 	ProcessUtility::forkAndExecByCallback(
 		std::format("{}/ffmpeg", ffmpegPath), buildArgs(true),
 		[&](const string_view& line) {ffmpegLineCallback(line); },
-		false, false, processId, iReturnedStatus);
+		true, true, processId, iReturnedStatus);
 }
 
 void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
