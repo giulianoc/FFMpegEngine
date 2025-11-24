@@ -613,7 +613,7 @@ vector<string> FFMpegEngine::buildArgs(bool useProgressPipe) const
 
     if (useProgressPipe)
     {
-        // args.emplace_back("-nostats"); temporaneamente rimosso per compatibilità con la precedente versione di fork
+        args.emplace_back("-nostats");
         args.emplace_back("-progress");
         args.emplace_back("pipe:1");
     }
