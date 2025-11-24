@@ -122,7 +122,7 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 			"{}"
 			", outputFfmpegPathFileName: {}"
 			", args: {}",
-			ffmpegPath, referenceToLog, outputFfmpegPathFileName, buildArgs(true)
+			ffmpegPath, referenceToLog, outputFfmpegPathFileName, toSingleLine(true)
 			);
 		_clientCallbackData = clientCallbackData;
 		if (!outputFfmpegPathFileName.empty())
@@ -135,7 +135,7 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 			"{}"
 			", outputFfmpegPathFileName: {}"
 			", args: {}",
-			ffmpegPath, referenceToLog, outputFfmpegPathFileName, buildArgs(true)
+			ffmpegPath, referenceToLog, outputFfmpegPathFileName, toSingleLine(true)
 			);
 		_clientCallbackData = nullptr;
 		_internalCallbackData->reset();
