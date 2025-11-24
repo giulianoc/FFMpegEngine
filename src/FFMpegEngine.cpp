@@ -120,7 +120,9 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 		SPDLOG_INFO("run (client callback)"
 			", ffmpegPath: {}"
 			"{}"
-			", outputFfmpegPathFileName: {}", ffmpegPath, referenceToLog, outputFfmpegPathFileName
+			", outputFfmpegPathFileName: {}"
+			", args: {}",
+			ffmpegPath, referenceToLog, outputFfmpegPathFileName, buildArgs(true)
 			);
 		_clientCallbackData = clientCallbackData;
 		if (!outputFfmpegPathFileName.empty())
@@ -131,7 +133,9 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 		SPDLOG_INFO("run (internal callback)"
 			", ffmpegPath: {}"
 			"{}"
-			", outputFfmpegPathFileName: {}", ffmpegPath, referenceToLog, outputFfmpegPathFileName
+			", outputFfmpegPathFileName: {}"
+			", args: {}",
+			ffmpegPath, referenceToLog, outputFfmpegPathFileName, buildArgs(true)
 			);
 		_clientCallbackData = nullptr;
 		_internalCallbackData->reset();
@@ -139,7 +143,7 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 	}
 	_referenceToLog = referenceToLog;
 	ProcessUtility::forkAndExecByCallback(
-		ffmpegPath + "/ffmpeg", buildArgs(true),
+		std::format("{}/ffmpeg", ffmpegPath), buildArgs(true),
 		[&](const string_view& line) {ffmpegLineCallback(line); },
 		false, false, processId, iReturnedStatus);
 }
@@ -151,7 +155,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 		SPDLOG_INFO("ffmpegLineCallback"
 			", ffmpegLine: {}", ffmpegLine
 			);
-		shared_ptr<CallbackData> callbackData = _clientCallbackData ? _clientCallbackData : _internalCallbackData;
+		const shared_ptr<CallbackData> callbackData = _clientCallbackData ? _clientCallbackData : _internalCallbackData;
 
 		// la prima chiamata ricevuta setta finished a false
 		if (!callbackData->_finished)
@@ -566,7 +570,8 @@ string FFMpegEngine::toSingleLine(vector<string>& args)
 	return ffmpegArgumentListStream.str();
 }
 
-vector<string> FFMpegEngine::buildArgs(bool useProgressPipe) const {
+vector<string> FFMpegEngine::buildArgs(bool useProgressPipe) const
+{
     vector<string> args;
 
 	args.emplace_back("ffmpeg");
@@ -598,7 +603,6 @@ vector<string> FFMpegEngine::buildArgs(bool useProgressPipe) const {
 
     if (useProgressPipe)
     {
-    	// TODO
         // args.emplace_back("-nostats"); temporaneamente rimosso per compatibilità con la precedente versione di fork
         args.emplace_back("-progress");
         args.emplace_back("pipe:1");
@@ -655,9 +659,9 @@ string FFMpegEngine::toPrettyString(const int indentSpaces) const {
 }
 
 /// Formato singola linea, come vero comando ffmpeg
-std::string FFMpegEngine::toSingleLine() const {
+std::string FFMpegEngine::toSingleLine(bool useProgressPipe) const {
 
-	return build();
+	return build(useProgressPipe);
 }
 
 void FFMpegEngine::reset()

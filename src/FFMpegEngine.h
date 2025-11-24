@@ -258,7 +258,10 @@ public:
 		[[nodiscard]] string toSingleLine() const;
    };
 
-    FFMpegEngine() = default;
+    FFMpegEngine()
+    {
+    	_internalCallbackData = make_shared<CallbackData>();
+    };
 
     // builder
     FFMpegEngine& addGlobalArg(const string_view &a);
@@ -300,7 +303,7 @@ public:
 		const shared_ptr<CallbackData> &clientCallbackData = nullptr, const string& outputFfmpegPathFileName = "");
 
 	[[nodiscard]] string toPrettyString(int indentSpaces = 2) const;
-	[[nodiscard]] string toSingleLine() const;
+	[[nodiscard]] string toSingleLine(bool useProgressPipe = false) const;
 
 	void reset();
 
