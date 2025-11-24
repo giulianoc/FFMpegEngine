@@ -2,13 +2,14 @@
 #pragma once
 
 #include "ProcessUtility.h"
+#include "StringUtils.h"
+
+#include <optional>
+#include <queue>
 #include <string>
 #include <string_view>
-#include <vector>
-#include <queue>
-#include <optional>
-#include <functional>
 #include <thread>
+#include <vector>
 
 #include "nlohmann/json.hpp"
 
@@ -35,6 +36,8 @@ public:
 
 			auto clonedData = make_shared<CallbackData>();
 
+			clonedData->_startTime = _startTime;
+			clonedData->_endTime = _endTime;
 			clonedData->_outputFfmpegPathFileName = _outputFfmpegPathFileName;
 			clonedData->_processedFrames = _processedFrames;
 			clonedData->_framePerSeconds = _framePerSeconds;
@@ -44,14 +47,17 @@ public:
 			clonedData->_dupFrames = _dupFrames;
 			clonedData->_stream_0_0_q = _stream_0_0_q;
 			clonedData->_stream_1_0_q = _stream_1_0_q;
-			clonedData->_totalSizeKBps = _totalSizeKBps;
+			clonedData->_processedSizeKBps = _processedSizeKBps;
 			clonedData->_bitRateKbps = _bitRateKbps;
+			clonedData->_progressPercent = _progressPercent;
 			clonedData->_avgBitRateKbps = _avgBitRateKbps;
 			clonedData->_finished = _finished;
 			clonedData->_errorMessages = _errorMessages;
 
 			clonedData->_urlForbidden = _urlForbidden;
 			clonedData->_urlNotFound = _urlNotFound;
+			clonedData->_nonMonotonousDts = _nonMonotonousDts;
+			clonedData->_timestampDiscontinuityCount = _timestampDiscontinuityCount;
 
 			clonedData->_signal = _signal;
 
@@ -71,10 +77,29 @@ public:
 			if (_errorMessages.size() >= maxErrorsStored)
 				_errorMessages.pop();
 			_errorMessages.push(errorMessage);
-			if (!_urlForbidden && errorMessage.starts_with("403 forbidden"))
+			string lowerErrorMessage = StringUtils::lowerCase(errorMessage);
+			if (!_urlForbidden && lowerErrorMessage.starts_with("403 forbidden"))
 				_urlForbidden = true;
-			if (!_urlNotFound && errorMessage.starts_with("404 not found"))
+			if (!_urlNotFound && lowerErrorMessage.starts_with("404 not found"))
 				_urlNotFound = true;
+			if (!_nonMonotonousDts && lowerErrorMessage.find("non-monotonous dts in output stream") != string::npos)
+				_nonMonotonousDts = true;
+			// [vist#0:4/h264 @ 0x55562ce99140] timestamp discontinuity (stream id=3): -20048800, new offset= 82
+			// [aist#0:0/aac @ 0x55562ced7800] timestamp discontinuity (stream id=0): 20048803, new offset= -20048721
+			// [vist#0:4/h264 @ 0x55562ce99140] timestamp discontinuity (stream id=3): -20048800, new offset= 79
+			// [aist#0:0/aac @ 0x55562ced7800] timestamp discontinuity (stream id=0): 20048804, new offset= -20048725
+			// [vist#0:4/h264 @ 0x55562ce99140] timestamp discontinuity (stream id=3): -20048800, new offset= 75
+			// [aist#0:0/aac @ 0x55562ced7800] timestamp discontinuity (stream id=0): 20048803, new offset= -20048728
+			// [vist#0:4/h264 @ 0x55562ce99140] timestamp discontinuity (stream id=3): -20048811, new offset= 83
+			// [aist#0:0/aac @ 0x55562ced7800] timestamp discontinuity (stream id=0): 20048803, new offset= -20048720
+			// ...
+			// Scenario:
+			// Abbiamo tanti messaggi "timestamp discontinuity" (vedi sopra)
+			// con i valori frame=, size=, time= corretti.
+			// Indica che lo streaming sta andando avanti ma mancano tanti timestamp.
+			// Il risultato è che il play non funziona per cui bisogna fare un restart.
+			if (lowerErrorMessage.find("timestamp discontinuity") != string::npos)
+				_timestampDiscontinuityCount++;
 		}
 
 		void reset()
@@ -85,6 +110,8 @@ public:
 				_ffmpegOutputLogFile.close();
 
 			_outputFfmpegPathFileName = "";
+			_startTime = nullopt;
+			_endTime = nullopt;
 			_processedFrames = 0;
 			_framePerSeconds = 0.0;
 			_processedOutputTimestampMilliSecs = chrono::milliseconds(0);
@@ -93,12 +120,15 @@ public:
 			_dupFrames = 0;
 			_stream_0_0_q = 0.0;
 			_stream_1_0_q = 0.0;
-			_totalSizeKBps = 0;
+			_processedSizeKBps = 0;
 			_bitRateKbps = 0.0;
+			_progressPercent = nullopt;
 			_avgBitRateKbps = 0.0;
 
 			_urlForbidden = false;
 			_urlNotFound = false;
+			_nonMonotonousDts = false;
+			_timestampDiscontinuityCount = 0;
 
 			_signal = nullopt;
 
@@ -124,13 +154,23 @@ public:
 			root["dupFrames"] = _dupFrames;
 			root["stream_0_0_q"] = _stream_0_0_q;
 			root["stream_1_0_q"] = _stream_1_0_q;
-			root["totalSizeKBps"] = _totalSizeKBps;
+			root["totalSizeKBps"] = _processedSizeKBps;
 			root["bitRateKbps"] = _bitRateKbps;
 			root["avgBitRateKbps"] = _avgBitRateKbps;
 			root["urlForbidden"] = _urlForbidden;
 			root["urlNotFound"] = _urlNotFound;
+			root["nonMonotonousDts"] = _nonMonotonousDts;
+			root["timestampDiscontinuityCount"] = _timestampDiscontinuityCount;
 			root["signal"] = this->_signal ? *this->_signal : -1;
 			root["finished"] = *_finished;
+			if (_startTime && _endTime)
+				root["elapsed"] = chrono::duration_cast<chrono::milliseconds>(*_endTime - *_startTime).count();
+			else
+				root["elapsed"] = nullptr;
+			if (_progressPercent)
+				root["progressPercent"] = *_progressPercent;
+			else
+				root["progressPercent"] = nullptr;
 
 			json errorMessagesRoot = json::array();
 			auto tmp = _errorMessages;   // copia della queue
@@ -146,6 +186,12 @@ public:
 		{
 			shared_lock locker(_callbackDataMutex);
 			return _finished;
+		}
+
+		optional<double> getProgressPercent()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _progressPercent;
 		}
 
 		optional<int32_t> getSignal()
@@ -164,6 +210,42 @@ public:
 		{
 			shared_lock locker(_callbackDataMutex);
 			return _urlNotFound;
+		}
+
+		bool getNonMonotonousDts()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _nonMonotonousDts;
+		}
+
+		int32_t getProcessedFrames()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _processedFrames;
+		}
+
+		size_t getProcessedSizeKBps()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _processedSizeKBps;
+		}
+
+		chrono::milliseconds getProcessedOutputTimestampMilliSecs()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _processedOutputTimestampMilliSecs;
+		}
+
+		uint16_t getTimestampDiscontinuityCount()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _timestampDiscontinuityCount;
+		}
+
+		double getBitRateKbps()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _bitRateKbps;
 		}
 
 	private:
@@ -191,6 +273,9 @@ public:
 		string _outputFfmpegPathFileName;
 		ofstream _ffmpegOutputLogFile;
 
+		optional<chrono::system_clock::time_point> _startTime{};
+		optional<chrono::system_clock::time_point> _endTime{};
+
 		int32_t _processedFrames{};
 		double _framePerSeconds{};
 		chrono::milliseconds _processedOutputTimestampMilliSecs{};
@@ -199,16 +284,21 @@ public:
 		int32_t _dupFrames{};
 		double _stream_0_0_q{};
 		double _stream_1_0_q{};
-		size_t _totalSizeKBps{};
+		size_t _processedSizeKBps{};
 		double _bitRateKbps{};
-		double _avgBitRateKbps{};	// calculated by us
+		optional<double> _progressPercent{}; // calcolato da noi se durata è stata settata
+		double _avgBitRateKbps{};			 // calculated by us
 
 		bool _urlForbidden{};
 		bool _urlNotFound{};
+		bool _nonMonotonousDts{};
+		uint16_t _timestampDiscontinuityCount{};
 
 		optional<int32_t> _signal{};
 
-		// nullopt se Data non è stato utilizzato, false se viene usato ma non è ancora terminato, true se viene usato ed è terminato (progress=end)
+		// nullopt se Data non è stato utilizzato
+		// false se viene usato ma non è ancora terminato
+		// true se viene usato ed è terminato (progress=end)
 		optional<bool> _finished = nullopt;
 
 		queue<string> _errorMessages;
@@ -292,6 +382,9 @@ public:
 
     // duration for percent calculation (ms). If set, progress percent = out_time_ms / durationMilliSeconds
     void setDurationMilliSeconds(int64_t durationMilliSeconds);
+	double getProgressPercent() const;
+
+	// ---------------- Utility methods ----------------
 	static string toSingleLine(vector<string> &args) ;
 
 	// build command (not shell-quoted). useProgressPipe true adds -progress pipe:1

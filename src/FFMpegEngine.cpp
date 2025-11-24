@@ -152,14 +152,16 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 {
 	try
 	{
-		SPDLOG_INFO("ffmpegLineCallback"
-			", ffmpegLine: {}", ffmpegLine
-			);
 		const shared_ptr<CallbackData> callbackData = _clientCallbackData ? _clientCallbackData : _internalCallbackData;
 
 		// la prima chiamata ricevuta setta finished a false
 		if (!callbackData->_finished)
+		{
 			callbackData->_finished = false;
+			callbackData->_startTime = chrono::system_clock::now();
+		}
+		else if (ffmpegLine.empty()) // ffmpegLine vuoto indica fine scrittura su file
+			callbackData->_endTime = chrono::system_clock::now();
 
 		// su questo file di log scrivo gli errori e tutto cio che non è gestito
 		if (!callbackData->_outputFfmpegPathFileName.empty())
@@ -353,7 +355,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					{
 						if (value != "N/A")
 						{
-							callbackData->_totalSizeKBps = stoul(string(value));
+							callbackData->_processedSizeKBps = stoul(string(value));
 							realBitRateChanged = true;
 						}
 						break;
@@ -400,10 +402,10 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 				}
 
 				// NEW: calcolo del bitrate reale
-				if (realBitRateChanged && callbackData->_processedOutputTimestampMilliSecs.count() > 0 && callbackData->_totalSizeKBps > 0)
+				if (realBitRateChanged && callbackData->_processedOutputTimestampMilliSecs.count() > 0 && callbackData->_processedSizeKBps > 0)
 				{
 					double seconds = callbackData->_processedOutputTimestampMilliSecs.count() / 1000.0;
-					double realBps = (callbackData->_totalSizeKBps * 8.0) / seconds; // kilobytes -> kilobits
+					double realBps = (callbackData->_processedSizeKBps * 8.0) / seconds; // kilobytes -> kilobits
 					double realKbps = realBps * 1000.0;
 
 					// Media ponderata per stabilità:
@@ -411,6 +413,14 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 						callbackData->_avgBitRateKbps = (callbackData->_bitRateKbps * 0.6) + (realKbps * 0.4);
 					else
 						callbackData->_avgBitRateKbps = realKbps;
+				}
+
+				if (callbackData->_processedOutputTimestampMilliSecs.count() > 0 && _durationMilliSeconds && *_durationMilliSeconds > 0)
+				{
+					*callbackData->_progressPercent = (static_cast<double>(callbackData->_processedOutputTimestampMilliSecs.count()) * 100.0) /
+						static_cast<double>(*(_durationMilliSeconds));
+					if (*callbackData->_progressPercent > 100.0)
+						*callbackData->_progressPercent = 100.0;
 				}
 			}
 			else
@@ -544,7 +554,7 @@ FFMpegEngine& FFMpegEngine::addWatermark(Output& out, string_view overlayLabel, 
 }
 
 void FFMpegEngine::setDurationMilliSeconds(int64_t durationMilliSeconds) {
-    _durationMilliSeconds = durationMilliSeconds;
+    *_durationMilliSeconds = durationMilliSeconds;
 }
 
 // ---------------- build args (vector) ----------------
