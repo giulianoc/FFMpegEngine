@@ -3,28 +3,28 @@
 #include <iostream>
 
 int main() {
-	FFMpegEngine ffmpegEngine;
-	ffmpegEngine.addGlobalArg("-hide_banner");
-	ffmpegEngine.addInput("input.mp4");
-	ffmpegEngine.addInput("watermark.png");
+	FFMpegEngine ffMpegEngine;
+	ffMpegEngine.addGlobalArg("-hide_banner");
+	ffMpegEngine.addInput("input.mp4");
+	ffMpegEngine.addInput("watermark.png");
 
 	// prepare VAAPI if desired
 	// eng.enableVaapi();
 	// eng.vaapiPrepareUpload();
 
-	auto& out = ffmpegEngine.addOutput("out.mp4");
+	auto& out = ffMpegEngine.addOutput("out.mp4");
 	out.map("0:v").map("0:a");
 	out.withVideoCodec("h264_nvenc");
 	out.withAudioCodec("aac");
 
 	// add overlay via filter_complex and map it to output
-	ffmpegEngine.addFilterComplex("[0:v][1:v] overlay=10:10 [vout]");
+	ffMpegEngine.addFilterComplex("[0:v][1:v] overlay=10:10 [vout]");
 	out.map("[vout]");
 
 	// synchronous run with progress parsing
-	ffmpegEngine.setDurationMilliSeconds(120000); // 2 minutes -> used to compute percent
+	ffMpegEngine.setDurationMilliSeconds(120000); // 2 minutes -> used to compute percent
 	/*
-	auto [rc, outtxt] = ffmpegEngine.run(true,
+	auto [rc, outtxt] = ffMpegEngine.run(true,
 		[](const FFMpegEngine::Progress &p){
 			if (p.out_time_ms) {
 				std::cout << "progress ms: " << *p.out_time_ms << "\n";

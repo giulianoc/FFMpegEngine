@@ -1,8 +1,6 @@
 
 #include "FFMpegEngine.h"
-
 #include "StringUtils.h"
-
 #include <chrono>
 #include <cstring>
 #include <fstream>
@@ -110,6 +108,318 @@ void FFMpegEngine::Output::buildArgs(vector<string>& args) const
 		args.emplace_back(extraArg);
 	if (!_path.empty())
 		args.emplace_back(_path);
+}
+
+void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& processId,
+	int &iReturnedStatus, const string& referenceToLog,
+	const shared_ptr<CallbackData> &clientCallbackData, const string& outputFfmpegPathFileName)
+{
+	if (clientCallbackData)
+	{
+		_clientCallbackData = clientCallbackData;
+		if (!outputFfmpegPathFileName.empty())
+			_clientCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
+	}
+	else
+	{
+		_clientCallbackData = nullptr;
+		_internalCallbackData->reset();
+		_internalCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
+	}
+	_referenceToLog = referenceToLog;
+	ProcessUtility::forkAndExecByCallback(
+		ffmpegPath + "/ffmpeg", buildArgs(true),
+		[&](const string_view& line) {ffmpegLineCallback(line); },
+		false, false, processId, iReturnedStatus);
+}
+
+void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
+{
+	try
+	{
+		shared_ptr<CallbackData> callbackData = _clientCallbackData ? _clientCallbackData : _internalCallbackData;
+
+		// la prima chiamata ricevuta setta finished a false
+		if (!callbackData->_finished)
+			callbackData->_finished = false;
+
+		// su questo file di log scrivo gli errori e tutto cio che non è gestito
+		if (!callbackData->_outputFfmpegPathFileName.empty())
+		{
+			if (!ffmpegLine.empty())
+			{
+				if (!callbackData->_ffmpegOutputLogFile)
+				{
+					callbackData->_ffmpegOutputLogFile.open(callbackData->_outputFfmpegPathFileName, ofstream::binary | ofstream::trunc);
+					if (!callbackData->_ffmpegOutputLogFile)
+					{
+						SPDLOG_ERROR(
+							"ffmpegLineCallback, open file failed"
+							"{}"
+							", ffmpegOutputLogPathFileName: {}",
+							_referenceToLog, callbackData->_outputFfmpegPathFileName
+						);
+					}
+				}
+			}
+			else
+			{
+				// ffmpegLine vuoto indica fine scrittura su file
+				if (callbackData->_ffmpegOutputLogFile)
+					callbackData->_ffmpegOutputLogFile.close();
+			}
+		}
+
+		// detect errors
+		bool error = false;
+		{
+			const string ffmpegLineLower = StringUtils::lowerCase(ffmpegLine);
+
+			// known errors
+			for (auto &pattern : FFMpegEngine::CallbackData::errorPatterns)
+			{
+				if (ffmpegLineLower.find(pattern) != std::string::npos)
+				{
+					callbackData->pushErrorMessage(std::format("{}: {}", pattern, ffmpegLine));
+					SPDLOG_ERROR("ffmpegLineCallback, {} detected"
+						"{}"
+						", ffmpegLine: {}", pattern, _referenceToLog, ffmpegLine);
+					error = true;
+					if (callbackData->_ffmpegOutputLogFile)
+					{
+						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
+						callbackData->_ffmpegOutputLogFile.write("\n", 1);
+						callbackData->_ffmpegOutputLogFile.flush();
+					}
+				}
+			}
+			if (!error)
+			{
+				// generic error
+				if (ffmpegLineLower.find("error") != std::string::npos)
+				{
+					callbackData->pushErrorMessage(std::format("error: {}", ffmpegLine));
+					SPDLOG_ERROR("ffmpegLineCallback, error detected"
+						"{}"
+						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
+					error = true;
+					if (callbackData->_ffmpegOutputLogFile)
+					{
+						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
+						callbackData->_ffmpegOutputLogFile.write("\n", 1);
+						callbackData->_ffmpegOutputLogFile.flush();
+					}
+				}
+				else if (ffmpegLineLower.find("signal") != std::string::npos)
+				{
+					if (ffmpegLineLower.find("signal 3") != string::npos // SIGQUIT
+						|| ffmpegLineLower.find("signal: 3") != string::npos)
+						callbackData->_signal = 3;
+					else if (ffmpegLineLower.find("signal 15") != string::npos // SIGTERM
+						|| ffmpegLineLower.find("signal: 15") != string::npos)
+						callbackData->_signal = 15;
+
+					callbackData->pushErrorMessage(std::format("signal: {}", ffmpegLine));
+					SPDLOG_ERROR("ffmpegLineCallback, signal detected"
+						"{}"
+						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
+					error = true;
+					if (callbackData->_ffmpegOutputLogFile)
+					{
+						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
+						callbackData->_ffmpegOutputLogFile.write("\n", 1);
+						callbackData->_ffmpegOutputLogFile.flush();
+					}
+				}
+			}
+		}
+
+		if (!error)
+		{
+			auto pos = ffmpegLine.find('=');
+			if (pos != string_view::npos)
+			{
+				string_view key = StringUtils::trim(ffmpegLine.substr(0, pos));
+				string_view value = StringUtils::trim(ffmpegLine.substr(pos + 1));
+				if (value.find('=') != string_view::npos)
+				{
+					// Questo if per gestire casi come:
+					// frame=11 11 fps= 11 q=28.0 q=28.0 size=N/A time=00:00:00.36 bitrate=N/A dup=2 drop=0 speed=0.358x
+					// In questo caso inizializziamo una key vuote in modo che vada nel default dello switch sotto
+					key = ffmpegLine.substr(0, 0);
+				}
+				bool realBitRateChanged = false;
+				switch (hash_case(key))
+				{
+					case "frame"_case:
+					{
+						callbackData->_processedFrames = stoi(string(value));
+						break;
+					}
+					case "fps"_case:
+					{
+						callbackData->_framePerSeconds = stod(string(value));
+						break;
+					}
+					case "speed"_case:
+					{
+						if (value != "N/A")
+						{
+							if (value.back() == 'x')
+								value.remove_suffix(1);
+							callbackData->_speed = std::stod(string(value));
+						}
+						break;
+					}
+					case "drop_frames"_case:
+					{
+						callbackData->_dropFrames = stoi(string(value));
+						break;
+					}
+					case "dup_frames"_case:
+					{
+						callbackData->_dupFrames = stoi(string(value));
+						break;
+					}
+					case "stream_0_0_q"_case:
+					{
+						callbackData->_stream_0_0_q = std::stod(string(value));
+						break;
+					}
+					case "stream_1_0_q"_case:
+					{
+						callbackData->_stream_1_0_q = std::stod(string(value));
+						break;
+					}
+					case "out_time"_case:
+					{
+						// usiamo out_time_ms already in millisecs
+						/*
+						// formato: HH:MM:SS.xxx
+						int h = std::stoi(string(value.substr(0, 2)));
+						int m = std::stoi(string(value.substr(3, 2)));
+						int s = std::stoi(string(value.substr(6, 2)));
+						int ms = std::stoi(string(value.substr(9)));
+						_encoding->_progress.out_time = std::chrono::milliseconds(
+							(static_cast<int64_t>(h) * 3600000LL) +
+							(static_cast<int64_t>(m) * 60000LL) +
+							(static_cast<int64_t>(s) * 1000LL) +
+							ms);
+						*/
+						break;
+					}
+					case "out_time_us"_case: // timestamp dell'output in microsecondi (1.000.000), usiamo out_time_ms in millisecs
+						break;
+					case "out_time_ms"_case:
+					{
+						/*
+						// formato: HH:MM:SS.xxx
+						int h = std::stoi(string(value.substr(0, 2)));
+						int m = std::stoi(string(value.substr(3, 2)));
+						int s = std::stoi(string(value.substr(6, 2)));
+						int ms = std::stoi(string(value.substr(9)));
+						_encoding->_progress.out_time = std::chrono::milliseconds(
+							(static_cast<int64_t>(h) * 3600000LL) +
+							(static_cast<int64_t>(m) * 60000LL) +
+							(static_cast<int64_t>(s) * 1000LL) +
+							ms);
+						*/
+						if (value != "N/A")
+						{
+							callbackData->_processedOutputTimestampMilliSecs = chrono::milliseconds(stoul(string(value)));
+							realBitRateChanged = true;
+						}
+						break;
+					}
+					case "total_size"_case:
+					{
+						if (value != "N/A")
+						{
+							callbackData->_totalSizeKBps = stoul(string(value));
+							realBitRateChanged = true;
+						}
+						break;
+					}
+					case "bitrate"_case:
+					{
+						// value is in kbits/s
+						if (value != "N/A")
+						{
+							callbackData->_bitRateKbps = stod(std::string(value));
+							realBitRateChanged = true;
+						}
+						break;
+					}
+					case "progress"_case:
+					{
+						if (value == "end")
+							callbackData->_finished = true;
+						break;
+					}
+					default:
+					{
+						string cleanffmpegLine;
+						{
+							cleanffmpegLine.reserve(ffmpegLine.size());
+							for (char c : ffmpegLine) {
+								if (c != '\r')   // elimina il carriage return
+									cleanffmpegLine.push_back(c);
+							}
+						}
+
+						SPDLOG_WARN("ffmpegLineCallback, line not managed"
+							"{}"
+							", cleanffmpegLine: {}", _referenceToLog, cleanffmpegLine);
+
+						if (callbackData->_ffmpegOutputLogFile)
+						{
+							callbackData->_ffmpegOutputLogFile.write(cleanffmpegLine.data(), cleanffmpegLine.size());
+							callbackData->_ffmpegOutputLogFile.write("\n", 1);
+							callbackData->_ffmpegOutputLogFile.flush();
+						}
+						break;
+					}
+				}
+
+				// NEW: calcolo del bitrate reale
+				if (realBitRateChanged && callbackData->_processedOutputTimestampMilliSecs.count() > 0 && callbackData->_totalSizeKBps > 0)
+				{
+					double seconds = callbackData->_processedOutputTimestampMilliSecs.count() / 1000.0;
+					double realBps = (callbackData->_totalSizeKBps * 8.0) / seconds; // kilobytes -> kilobits
+					double realKbps = realBps * 1000.0;
+
+					// Media ponderata per stabilità:
+					if (callbackData->_bitRateKbps > 0.0)
+						callbackData->_avgBitRateKbps = (callbackData->_bitRateKbps * 0.6) + (realKbps * 0.4);
+					else
+						callbackData->_avgBitRateKbps = realKbps;
+				}
+			}
+			else
+			{
+				SPDLOG_WARN("ffmpegLineCallback, line not managed"
+					"{}"
+					", ffmpegLine: {}", _referenceToLog, ffmpegLine);
+
+				if (callbackData->_ffmpegOutputLogFile)
+				{
+					callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
+					callbackData->_ffmpegOutputLogFile.write("\n", 1);
+					callbackData->_ffmpegOutputLogFile.flush();
+				}
+			}
+		}
+	}
+	catch (exception& e)
+	{
+		SPDLOG_ERROR(
+			"ffmpegLineCallback, exception"
+			"{}"
+			", ffmpegLine: {}"
+			", exception: {}",
+			_referenceToLog, ffmpegLine, e.what()
+		);
+	}
 }
 
 string FFMpegEngine::Output::toSingleLine() const
@@ -345,4 +655,5 @@ void FFMpegEngine::reset()
 	_hwAccel = nullptr;
 	_vaapiDevice = nullopt;
 	_durationMilliSeconds = nullopt;
+	_internalCallbackData->reset();
 }

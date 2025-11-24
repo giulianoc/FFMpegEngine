@@ -29,17 +29,20 @@ SET (HEADERS
 )
 
 include_directories("${NLOHMANN_INCLUDE_DIR}")
-#include_directories("${SPDLOG_INCLUDE_DIR}")
+include_directories("${SPDLOG_INCLUDE_DIR}")
 include_directories("${STRINGUTILS_INCLUDE_DIR}")
+include_directories("${PROCESSUTILITY_INCLUDE_DIR}")
 
 if(APPLE)
 	link_directories("${STRINGUTILS_LIB_DIR}")
+	link_directories("${PROCESSUTILITY_LIB_DIR}")
 endif()
 
 add_library (FFMpegEngine SHARED ${SOURCES} ${HEADERS})
 
 if(APPLE)
 	target_link_libraries(FFMpegEngine StringUtils)
+	target_link_libraries(FFMpegEngine ProcessUtility)
 endif()
 
 install (TARGETS FFMpegEngine DESTINATION lib)

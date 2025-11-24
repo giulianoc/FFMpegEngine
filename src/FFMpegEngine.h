@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "ProcessUtility.h"
 #include <string>
 #include <string_view>
 #include <vector>
@@ -12,6 +13,7 @@
 #include "nlohmann/json.hpp"
 
 #include <fstream>
+#include <shared_mutex>
 
 using namespace std;
 
@@ -20,8 +22,151 @@ using ordered_json = nlohmann::ordered_json;
 using namespace nlohmann::literals;
 
 class FFMpegEngine {
+private:
+	void ffmpegLineCallback(const string_view& ffmpegLine);
 public:
-	struct CallbackData {
+	class CallbackData {
+	public:
+		CallbackData() = default;
+
+		shared_ptr<CallbackData> clone()
+		{
+			shared_lock locker(_callbackDataMutex);
+
+			auto clonedData = make_shared<CallbackData>();
+
+			clonedData->_outputFfmpegPathFileName = _outputFfmpegPathFileName;
+			clonedData->_processedFrames = _processedFrames;
+			clonedData->_framePerSeconds = _framePerSeconds;
+			clonedData->_processedOutputTimestampMilliSecs = _processedOutputTimestampMilliSecs;
+			clonedData->_speed = _speed;
+			clonedData->_dropFrames = _dropFrames;
+			clonedData->_dupFrames = _dupFrames;
+			clonedData->_stream_0_0_q = _stream_0_0_q;
+			clonedData->_stream_1_0_q = _stream_1_0_q;
+			clonedData->_totalSizeKBps = _totalSizeKBps;
+			clonedData->_bitRateKbps = _bitRateKbps;
+			clonedData->_avgBitRateKbps = _avgBitRateKbps;
+			clonedData->_finished = _finished;
+			clonedData->_errorMessages = _errorMessages;
+
+			clonedData->_urlForbidden = _urlForbidden;
+			clonedData->_urlNotFound = _urlNotFound;
+
+			clonedData->_signal = _signal;
+
+			return clonedData;
+		}
+
+		void setOutputFfmpegPathFileName(const string &outputFfmpegPathFileName)
+		{
+			unique_lock locker(_callbackDataMutex);
+			_outputFfmpegPathFileName = outputFfmpegPathFileName;
+		}
+
+		static constexpr int32_t maxErrorsStored = 50;
+		void pushErrorMessage(const string& errorMessage)
+		{
+			unique_lock locker(_callbackDataMutex);
+			if (_errorMessages.size() >= maxErrorsStored)
+				_errorMessages.pop();
+			_errorMessages.push(errorMessage);
+			if (!_urlForbidden && errorMessage.starts_with("403 forbidden"))
+				_urlForbidden = true;
+			if (!_urlNotFound && errorMessage.starts_with("404 not found"))
+				_urlNotFound = true;
+		}
+
+		void reset()
+		{
+			unique_lock locker(_callbackDataMutex);
+
+			if (_ffmpegOutputLogFile)
+				_ffmpegOutputLogFile.close();
+
+			_outputFfmpegPathFileName = "";
+			_processedFrames = 0;
+			_framePerSeconds = 0.0;
+			_processedOutputTimestampMilliSecs = chrono::milliseconds(0);
+			_speed = 0.0;
+			_dropFrames = 0;
+			_dupFrames = 0;
+			_stream_0_0_q = 0.0;
+			_stream_1_0_q = 0.0;
+			_totalSizeKBps = 0;
+			_bitRateKbps = 0.0;
+			_avgBitRateKbps = 0.0;
+
+			_urlForbidden = false;
+			_urlNotFound = false;
+
+			_signal = nullopt;
+
+			_finished = nullopt;
+
+			while (!_errorMessages.empty())
+				_errorMessages.pop();
+		}
+
+		json toJson()
+		{
+			shared_lock locker(_callbackDataMutex);
+
+			if (!_finished) // indica che Data non è stato usato
+				return nullptr;
+			json root;
+			root["outputFfmpegPathFileName"] = _outputFfmpegPathFileName;
+			root["processedFrames"] = _processedFrames;
+			root["framePerSeconds"] = _framePerSeconds;
+			root["processedOutputTimestampMilliSecs"] = _processedOutputTimestampMilliSecs.count();
+			root["speed"] = _speed;
+			root["dropFrames"] = _dropFrames;
+			root["dupFrames"] = _dupFrames;
+			root["stream_0_0_q"] = _stream_0_0_q;
+			root["stream_1_0_q"] = _stream_1_0_q;
+			root["totalSizeKBps"] = _totalSizeKBps;
+			root["bitRateKbps"] = _bitRateKbps;
+			root["avgBitRateKbps"] = _avgBitRateKbps;
+			root["urlForbidden"] = _urlForbidden;
+			root["urlNotFound"] = _urlNotFound;
+			root["signal"] = this->_signal ? *this->_signal : -1;
+			root["finished"] = *_finished;
+
+			json errorMessagesRoot = json::array();
+			auto tmp = _errorMessages;   // copia della queue
+			while (!tmp.empty()) {
+				errorMessagesRoot.push_back(tmp.front());
+				tmp.pop();
+			}
+			root["errorMessages"] = errorMessagesRoot;
+			return root;
+		}
+
+		optional<bool> getFinished()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _finished;
+		}
+
+		optional<int32_t> getSignal()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _signal;
+		}
+
+		bool getUrlForbidden()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _urlForbidden;
+		}
+
+		bool getUrlNotFound()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _urlNotFound;
+		}
+
+	private:
 		// lower case
 		inline static const std::vector<string> errorPatterns = {
 			"invalid data found",
@@ -39,128 +184,33 @@ public:
 			"404 not found"	// url not found
 		};
 
-		CallbackData() = default;
-		// Copy assignment operator that ignores ffmpegOutputLogFile
-		CallbackData& operator=(const CallbackData& other)
-		{
-			if (this == &other)
-				return *this;
+        friend void FFMpegEngine::ffmpegLineCallback(const string_view&);
 
-			processedFrames = other.processedFrames;
-			framePerSeconds = other.framePerSeconds;
-			processedOutputTimestampMilliSecs = other.processedOutputTimestampMilliSecs;
-			speed = other.speed;
-			dropFrames = other.dropFrames;
-			dupFrames = other.dupFrames;
-			stream_0_0_q = other.stream_0_0_q;
-			stream_1_0_q = other.stream_1_0_q;
-			totalSizeKBps = other.totalSizeKBps;
-			bitRateKbps = other.bitRateKbps;
-			avgBitRateKbps = other.avgBitRateKbps;
-			finished = other.finished;
-			_errorMessages = other._errorMessages;
+		shared_mutex _callbackDataMutex;
 
-			urlForbidden = other.urlForbidden;
-			urlNotFound = other.urlNotFound;
+		string _outputFfmpegPathFileName;
+		ofstream _ffmpegOutputLogFile;
 
-			signal = other.signal;
+		int32_t _processedFrames{};
+		double _framePerSeconds{};
+		chrono::milliseconds _processedOutputTimestampMilliSecs{};
+		double _speed{}; // Utile per capire se il server sta performando bene
+		int32_t _dropFrames{};
+		int32_t _dupFrames{};
+		double _stream_0_0_q{};
+		double _stream_1_0_q{};
+		size_t _totalSizeKBps{};
+		double _bitRateKbps{};
+		double _avgBitRateKbps{};	// calculated by us
 
-			// ffmpegOutputLogFile non viene copiato perchè non è copiabile (La sua copy-constructor è deleted)
+		bool _urlForbidden{};
+		bool _urlNotFound{};
 
-			return *this;
-		}
-
-		static constexpr int32_t maxErrorsStored = 50;
-		void pushErrorMessage(const string& errorMessage)
-		{
-			if (_errorMessages.size() >= maxErrorsStored)
-				_errorMessages.pop();
-			_errorMessages.push(errorMessage);
-			if (!urlForbidden && errorMessage.starts_with("403 forbidden"))
-				urlForbidden = true;
-			if (!urlNotFound && errorMessage.starts_with("404 not found"))
-				urlNotFound = true;
-		}
-
-		void reset()
-		{
-			processedFrames = 0;
-			framePerSeconds = 0.0;
-			processedOutputTimestampMilliSecs = chrono::milliseconds(0);
-			speed = 0.0;
-			dropFrames = 0;
-			dupFrames = 0;
-			stream_0_0_q = 0.0;
-			stream_1_0_q = 0.0;
-			totalSizeKBps = 0;
-			bitRateKbps = 0.0;
-			avgBitRateKbps = 0.0;
-
-			urlForbidden = false;
-			urlNotFound = false;
-
-			signal = nullopt;
-
-			finished = nullopt;
-
-			while (!_errorMessages.empty())
-				_errorMessages.pop();
-		}
-
-		json toJson()
-		{
-			if (!finished) // indica che Data non è stato usato
-				return nullptr;
-			json root;
-			root["processedFrames"] = processedFrames;
-			root["framePerSeconds"] = framePerSeconds;
-			root["processedOutputTimestampMilliSecs"] = processedOutputTimestampMilliSecs.count();
-			root["speed"] = speed;
-			root["dropFrames"] = dropFrames;
-			root["dupFrames"] = dupFrames;
-			root["stream_0_0_q"] = stream_0_0_q;
-			root["stream_1_0_q"] = stream_1_0_q;
-			root["totalSizeKBps"] = totalSizeKBps;
-			root["bitRateKbps"] = bitRateKbps;
-			root["avgBitRateKbps"] = avgBitRateKbps;
-			root["urlForbidden"] = urlForbidden;
-			root["urlNotFound"] = urlNotFound;
-			root["signal"] = signal ? *signal : -1;
-			root["finished"] = *finished;
-
-			json errorMessagesRoot = json::array();
-			auto tmp = _errorMessages;   // copia della queue
-			while (!tmp.empty()) {
-				errorMessagesRoot.push_back(tmp.front());
-				tmp.pop();
-			}
-			root["errorMessages"] = errorMessagesRoot;
-			return root;
-		}
-
-		ofstream ffmpegOutputLogFile;
-
-		int32_t processedFrames{};
-		double framePerSeconds{};
-		chrono::milliseconds processedOutputTimestampMilliSecs{};
-		double speed{}; // Utile per capire se il server sta performando bene
-		int32_t dropFrames{};
-		int32_t dupFrames{};
-		double stream_0_0_q{};
-		double stream_1_0_q{};
-		size_t totalSizeKBps{};
-		double bitRateKbps{};
-		double avgBitRateKbps{};	// calculated by us
-
-		bool urlForbidden{};
-		bool urlNotFound{};
-
-		optional<int32_t> signal{};
+		optional<int32_t> _signal{};
 
 		// nullopt se Data non è stato utilizzato, false se viene usato ma non è ancora terminato, true se viene usato ed è terminato (progress=end)
-		optional<bool> finished = nullopt;
+		optional<bool> _finished = nullopt;
 
-	  private:
 		queue<string> _errorMessages;
 	};
 
@@ -245,6 +295,10 @@ public:
     [[nodiscard]] string build(bool useProgressPipe = false) const;
     [[nodiscard]] vector<string> buildArgs(bool useProgressPipe = false) const;
 
+	void run(const string& ffmpegPath, ProcessUtility::ProcessId& processId,
+		int &iReturnedStatus, const string& referenceToLog,
+		const shared_ptr<CallbackData> &clientCallbackData = nullptr, const string& outputFfmpegPathFileName = "");
+
 	[[nodiscard]] string toPrettyString(int indentSpaces = 2) const;
 	[[nodiscard]] string toSingleLine() const;
 
@@ -259,4 +313,8 @@ private:
     optional<string> _vaapiDevice;
 
     optional<int64_t> _durationMilliSeconds;
+
+	shared_ptr<CallbackData> _internalCallbackData;
+	shared_ptr<CallbackData> _clientCallbackData;
+	string _referenceToLog;
 };

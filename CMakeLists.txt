@@ -39,5 +39,5 @@
 
 add_subdirectory(src)
 if(FFMPEGENGINE_EXAMPLES)
-    add_subdirectory(examples/ffmpegEngine)
+    add_subdirectory(examples/ffMpegEngine)
 endif()

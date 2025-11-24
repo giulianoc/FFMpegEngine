@@ -21,7 +21,7 @@
 # with the authors.
 
 SET (SOURCES
-        ffmpegEngine.cpp
+        ffMpegEngine.cpp
 )
 
 SET (HEADERS
@@ -32,8 +32,8 @@ include_directories("${NLOHMANN_INCLUDE_DIR}")
 #include_directories("${FFMPEGENGINE_INCLUDE_DIR}")
 link_directories("${STRINGUTILS_LIB_DIR}")
 
-add_executable(ffmpegEngine ${SOURCES} ${HEADERS})
+add_executable(ffMpegEngine ${SOURCES} ${HEADERS})
 
-target_link_libraries (ffmpegEngine FFMpegEngine)
-target_link_libraries (ffmpegEngine StringUtils)
+target_link_libraries (ffMpegEngine FFMpegEngine)
+target_link_libraries (ffMpegEngine StringUtils)
 
