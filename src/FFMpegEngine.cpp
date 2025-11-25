@@ -435,10 +435,10 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 
 				if (callbackData->_processedOutputTimestampMilliSecs.count() > 0 && _durationMilliSeconds && *_durationMilliSeconds > 0)
 				{
-					*callbackData->_progressPercent = (static_cast<double>(callbackData->_processedOutputTimestampMilliSecs.count()) * 100.0) /
+					callbackData->_progressPercent = (static_cast<double>(callbackData->_processedOutputTimestampMilliSecs.count()) * 100.0) /
 						static_cast<double>(*(_durationMilliSeconds));
 					if (*callbackData->_progressPercent > 100.0)
-						*callbackData->_progressPercent = 100.0;
+						callbackData->_progressPercent = 100.0;
 				}
 				SPDLOG_INFO("ffmpegLineCallback, progressPercent"
 					"{}"
@@ -585,7 +585,7 @@ FFMpegEngine& FFMpegEngine::addWatermark(Output& out, string_view overlayLabel, 
 }
 
 void FFMpegEngine::setDurationMilliSeconds(const int64_t durationMilliSeconds) {
-    *_durationMilliSeconds = durationMilliSeconds;
+    _durationMilliSeconds = durationMilliSeconds;
 }
 
 // ---------------- build args (vector) ----------------
