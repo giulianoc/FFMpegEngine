@@ -434,6 +434,15 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					if (*callbackData->_progressPercent > 100.0)
 						*callbackData->_progressPercent = 100.0;
 				}
+				SPDLOG_INFO("ffmpegLineCallback, progressPercent"
+					"{}"
+					", processedOutputTimestampMilliSecs: {}"
+					", durationMilliSeconds: {}"
+					", progressPercent: {}",
+					_referenceToLog, callbackData->_processedOutputTimestampMilliSecs.count(),
+					_durationMilliSeconds ? *_durationMilliSeconds : static_cast<int64_t>("-1"),
+					callbackData->_progressPercent ? *callbackData->_progressPercent : -1.0
+					);
 			}
 			else
 			{
