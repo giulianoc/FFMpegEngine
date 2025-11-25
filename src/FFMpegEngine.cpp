@@ -183,12 +183,14 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					callbackData->_ffmpegOutputLogFile.open(callbackData->_outputFfmpegPathFileName, ofstream::binary | ofstream::trunc);
 					if (!callbackData->_ffmpegOutputLogFile)
 					{
-						SPDLOG_ERROR(
+						string errorMessage = std::format(
 							"ffmpegLineCallback, open file failed"
 							"{}"
 							", ffmpegOutputLogPathFileName: {}",
 							_referenceToLog, callbackData->_outputFfmpegPathFileName
 						);
+						SPDLOG_ERROR(errorMessage);
+						callbackData->pushErrorMessage(errorMessage);
 					}
 				}
 			}
@@ -435,9 +437,13 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 			}
 			else
 			{
-				SPDLOG_WARN("ffmpegLineCallback, line not managed"
-					"{}"
-					", ffmpegLine: {}", _referenceToLog, ffmpegLine);
+				if (ffmpegLine.empty())
+					SPDLOG_INFO("ffmpegLineCallback, line is empty"
+						"{}", _referenceToLog);
+				else
+					SPDLOG_WARN("ffmpegLineCallback, line not managed"
+						"{}"
+						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
 
 				if (callbackData->_ffmpegOutputLogFile)
 				{

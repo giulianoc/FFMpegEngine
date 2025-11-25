@@ -266,6 +266,7 @@ public:
 			"broken pipe",
 			"unknown encoder",
 			"invalid argument",
+			"unrecognized option",
 			"403 forbidden", // url forbidden
 			"non-monotonous dts in output stream",
 			"404 not found"	// url not found
