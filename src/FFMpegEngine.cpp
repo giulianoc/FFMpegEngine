@@ -123,8 +123,11 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 				", ffmpegPath: {}"
 				"{}"
 				", outputFfmpegPathFileName: {}"
+				", durationMilliSeconds: {}"
 				", args: {}",
-				ffmpegPath, referenceToLog, outputFfmpegPathFileName, toSingleLine(true)
+				ffmpegPath, referenceToLog, outputFfmpegPathFileName,
+				_durationMilliSeconds ? *_durationMilliSeconds : static_cast<int64_t>(-1),
+				toSingleLine(true)
 				);
 			_clientCallbackData = clientCallbackData;
 			if (!outputFfmpegPathFileName.empty())
@@ -136,8 +139,11 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 				", ffmpegPath: {}"
 				"{}"
 				", outputFfmpegPathFileName: {}"
+				", durationMilliSeconds: {}"
 				", args: {}",
-				ffmpegPath, referenceToLog, outputFfmpegPathFileName, toSingleLine(true)
+				ffmpegPath, referenceToLog, outputFfmpegPathFileName,
+				_durationMilliSeconds ? *_durationMilliSeconds : static_cast<int64_t>(-1),
+				toSingleLine(true)
 				);
 			_clientCallbackData = nullptr;
 			_internalCallbackData->reset();
