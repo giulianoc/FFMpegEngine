@@ -115,37 +115,47 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 	int &iReturnedStatus, const string& referenceToLog,
 	const shared_ptr<CallbackData> &clientCallbackData, const string& outputFfmpegPathFileName)
 {
-	if (clientCallbackData)
+	try
 	{
-		SPDLOG_INFO("run (client callback)"
-			", ffmpegPath: {}"
-			"{}"
-			", outputFfmpegPathFileName: {}"
-			", args: {}",
-			ffmpegPath, referenceToLog, outputFfmpegPathFileName, toSingleLine(true)
-			);
-		_clientCallbackData = clientCallbackData;
-		if (!outputFfmpegPathFileName.empty())
-			_clientCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
+		if (clientCallbackData)
+		{
+			SPDLOG_INFO("run (client callback)"
+				", ffmpegPath: {}"
+				"{}"
+				", outputFfmpegPathFileName: {}"
+				", args: {}",
+				ffmpegPath, referenceToLog, outputFfmpegPathFileName, toSingleLine(true)
+				);
+			_clientCallbackData = clientCallbackData;
+			if (!outputFfmpegPathFileName.empty())
+				_clientCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
+		}
+		else
+		{
+			SPDLOG_INFO("run (internal callback)"
+				", ffmpegPath: {}"
+				"{}"
+				", outputFfmpegPathFileName: {}"
+				", args: {}",
+				ffmpegPath, referenceToLog, outputFfmpegPathFileName, toSingleLine(true)
+				);
+			_clientCallbackData = nullptr;
+			_internalCallbackData->reset();
+			_internalCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
+		}
+		_referenceToLog = referenceToLog;
+		ProcessUtility::forkAndExecByCallback(
+			std::format("{}/ffmpeg", ffmpegPath), buildArgs(true),
+			[&](const string_view& line) {ffmpegLineCallback(line); },
+			true, true, processId, iReturnedStatus);
 	}
-	else
+	catch (exception& e)
 	{
-		SPDLOG_INFO("run (internal callback)"
-			", ffmpegPath: {}"
-			"{}"
-			", outputFfmpegPathFileName: {}"
-			", args: {}",
-			ffmpegPath, referenceToLog, outputFfmpegPathFileName, toSingleLine(true)
+		SPDLOG_ERROR("run failed"
+			", exception: {}", e.what()
 			);
-		_clientCallbackData = nullptr;
-		_internalCallbackData->reset();
-		_internalCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
+		throw;
 	}
-	_referenceToLog = referenceToLog;
-	ProcessUtility::forkAndExecByCallback(
-		std::format("{}/ffmpeg", ffmpegPath), buildArgs(true),
-		[&](const string_view& line) {ffmpegLineCallback(line); },
-		true, true, processId, iReturnedStatus);
 }
 
 void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
@@ -389,7 +399,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 
 						SPDLOG_WARN("ffmpegLineCallback, line not managed"
 							"{}"
-							", cleanffmpegLine: {}", _referenceToLog, cleanffmpegLine);
+							", cleanffmpegLine (without \\r): {}", _referenceToLog, cleanffmpegLine);
 
 						if (callbackData->_ffmpegOutputLogFile)
 						{

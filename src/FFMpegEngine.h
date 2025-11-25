@@ -224,6 +224,12 @@ public:
 			return _processedFrames;
 		}
 
+		double getFramePerSeconds()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _framePerSeconds;
+		}
+
 		size_t getProcessedSizeKBps()
 		{
 			shared_lock locker(_callbackDataMutex);
