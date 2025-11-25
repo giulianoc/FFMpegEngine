@@ -347,9 +347,20 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 						break;
 					}
 					case "out_time_us"_case: // timestamp dell'output in microsecondi (1.000.000), usiamo out_time_ms in millisecs
+					{
+						if (value != "N/A")
+						{
+							callbackData->_processedOutputTimestampMilliSecs = chrono::milliseconds(stoul(string(value)) / 1000);
+							realBitRateChanged = true;
+						}
 						break;
+					}
 					case "out_time_ms"_case:
 					{
+						// Dovrebbe contenere millisecondi, invece contiene microsecondi, come out_time_us
+						// È un bug storico mai sistemato per non rompere script esistenti. E' sempre identico a out_time_us
+						// Per cui uso out_time_us
+
 						/*
 						// formato: HH:MM:SS.xxx
 						int h = std::stoi(string(value.substr(0, 2)));
@@ -362,11 +373,6 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 							(static_cast<int64_t>(s) * 1000LL) +
 							ms);
 						*/
-						if (value != "N/A")
-						{
-							callbackData->_processedOutputTimestampMilliSecs = chrono::milliseconds(stoul(string(value)));
-							realBitRateChanged = true;
-						}
 						break;
 					}
 					case "total_size"_case:
@@ -440,7 +446,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					if (*callbackData->_progressPercent > 100.0)
 						callbackData->_progressPercent = 100.0;
 				}
-				SPDLOG_INFO("ffmpegLineCallback, progressPercent"
+				SPDLOG_TRACE("ffmpegLineCallback, progressPercent"
 					"{}"
 					", processedOutputTimestampMilliSecs: {}"
 					", durationMilliSeconds: {}"
