@@ -35,6 +35,8 @@ public:
 
 			auto clonedData = make_shared<CallbackData>();
 
+			clonedData->_finished = _finished;
+
 			clonedData->_startTime = _startTime;
 			clonedData->_endTime = _endTime;
 			clonedData->_outputFfmpegPathFileName = _outputFfmpegPathFileName;
@@ -50,7 +52,6 @@ public:
 			clonedData->_bitRateKbps = _bitRateKbps;
 			clonedData->_progressPercent = _progressPercent;
 			clonedData->_avgBitRateKbps = _avgBitRateKbps;
-			clonedData->_finished = _finished;
 			clonedData->_errorMessages = _errorMessages;
 
 			clonedData->_urlForbidden = _urlForbidden;
