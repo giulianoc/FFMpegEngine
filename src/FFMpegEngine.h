@@ -153,7 +153,7 @@ public:
 			root["dupFrames"] = _dupFrames;
 			root["stream_0_0_q"] = _stream_0_0_q;
 			root["stream_1_0_q"] = _stream_1_0_q;
-			root["totalSizeKBps"] = _processedSizeKBps;
+			root["processedSizeKBps"] = _processedSizeKBps;
 			root["bitRateKbps"] = _bitRateKbps;
 			root["avgBitRateKbps"] = _avgBitRateKbps;
 			root["urlForbidden"] = _urlForbidden;

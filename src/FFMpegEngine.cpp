@@ -428,9 +428,9 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 				// NEW: calcolo del bitrate reale
 				if (realBitRateChanged && callbackData->_processedOutputTimestampMilliSecs.count() > 0 && callbackData->_processedSizeKBps > 0)
 				{
-					double seconds = callbackData->_processedOutputTimestampMilliSecs.count() / 1000.0;
-					double realBps = (callbackData->_processedSizeKBps * 8.0) / seconds; // kilobytes -> kilobits
-					double realKbps = realBps * 1000.0;
+					const double seconds = callbackData->_processedOutputTimestampMilliSecs.count() / 1000.0;
+					const double realBps = (callbackData->_processedSizeKBps * 8.0) / seconds; // kilobytes -> kilobits
+					const double realKbps = realBps * 1000.0;
 
 					// Media ponderata per stabilità:
 					if (callbackData->_bitRateKbps > 0.0)
@@ -441,8 +441,10 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 
 				if (callbackData->_processedOutputTimestampMilliSecs.count() > 0 && _durationMilliSeconds && *_durationMilliSeconds > 0)
 				{
-					callbackData->_progressPercent = (static_cast<double>(callbackData->_processedOutputTimestampMilliSecs.count()) * 100.0) /
+					double dValue = (static_cast<double>(callbackData->_processedOutputTimestampMilliSecs.count()) * 100.0) /
 						static_cast<double>(*(_durationMilliSeconds));
+					// Prossima istruzione serve per arrotondare, *100 sposta due cifre decimali a sinistra, round arrotonda, /100 riporta a posto
+					callbackData->_progressPercent = std::round(dValue * 100.0) / 100.0;
 					if (*callbackData->_progressPercent > 100.0)
 						callbackData->_progressPercent = 100.0;
 				}
