@@ -553,7 +553,7 @@ FFMpegEngine& FFMpegEngine::addWatermark(Output& out, string_view overlayLabel, 
     return *this;
 }
 
-void FFMpegEngine::setDurationMilliSeconds(int64_t durationMilliSeconds) {
+void FFMpegEngine::setDurationMilliSeconds(const int64_t durationMilliSeconds) {
     *_durationMilliSeconds = durationMilliSeconds;
 }
 
