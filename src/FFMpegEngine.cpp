@@ -440,7 +440,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					", durationMilliSeconds: {}"
 					", progressPercent: {}",
 					_referenceToLog, callbackData->_processedOutputTimestampMilliSecs.count(),
-					_durationMilliSeconds ? *_durationMilliSeconds : static_cast<int64_t>("-1"),
+					_durationMilliSeconds ? *_durationMilliSeconds : static_cast<int64_t>(-1),
 					callbackData->_progressPercent ? *callbackData->_progressPercent : -1.0
 					);
 			}
