@@ -150,14 +150,6 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 			_internalCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
 		}
 		_referenceToLog = referenceToLog;
-		vector<string> aaaa = buildArgs(true);
-		SPDLOG_INFO("forkAndExecByCallback"
-			"{}"
-			", command: {}", referenceToLog,
-			accumulate(
-				begin(aaaa), end(aaaa), string(), [](const string &s, string arg)
-				{ return (s == "" ? arg : (s + std::format(", {}", arg))); }
-			));
 		ProcessUtility::forkAndExecByCallback(
 			std::format("{}/ffmpeg", ffmpegPath), buildArgs(true),
 			[&](const string_view& line) {ffmpegLineCallback(line); },
@@ -176,6 +168,10 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 {
 	try
 	{
+		SPDLOG_INFO("AAAAAAAAA"
+			"{}"
+			", ffmpegLine: {}", _referenceToLog, ffmpegLine
+			);
 		const shared_ptr<CallbackData> callbackData = _clientCallbackData ? _clientCallbackData : _internalCallbackData;
 
 		// la prima chiamata ricevuta setta finished a false
