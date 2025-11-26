@@ -168,10 +168,6 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 {
 	try
 	{
-		SPDLOG_INFO("AAAAAAAAA"
-			"{}"
-			", ffmpegLine: {}", _referenceToLog, ffmpegLine
-			);
 		const shared_ptr<CallbackData> callbackData = _clientCallbackData ? _clientCallbackData : _internalCallbackData;
 
 		// la prima chiamata ricevuta setta finished a false
