@@ -150,6 +150,14 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 			_internalCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
 		}
 		_referenceToLog = referenceToLog;
+		vector<string> aaaa = buildArgs(true);
+		SPDLOG_INFO("forkAndExecByCallback"
+			"{}"
+			", command: {}", referenceToLog,
+			accumulate(
+				begin(aaaa), end(aaaa), string(), [](const string &s, string arg)
+				{ return (s == "" ? arg : (s + std::format(", {}", arg))); }
+			));
 		ProcessUtility::forkAndExecByCallback(
 			std::format("{}/ffmpeg", ffmpegPath), buildArgs(true),
 			[&](const string_view& line) {ffmpegLineCallback(line); },
