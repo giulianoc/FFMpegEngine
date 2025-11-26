@@ -361,7 +361,7 @@ public:
     };
 
     // builder
-    FFMpegEngine& addGlobalArg(const string_view &a);
+    FFMpegEngine& addGlobalArg(const string_view &arg);
 	FFMpegEngine& addGlobalArgs(const string& parameters);
     Input& addInput(string_view source);
     Input& addInput();

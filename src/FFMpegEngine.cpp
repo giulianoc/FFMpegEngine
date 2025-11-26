@@ -12,8 +12,9 @@
 
 FFMpegEngine::Input& FFMpegEngine::Input::addArg(const string_view& parameter)
 {
-	if (!StringUtils::trim(parameter).empty())
-		_args.emplace_back(StringUtils::trim(parameter));
+	string_view trimmed = StringUtils::trim(parameter);
+	if (!trimmed.empty())
+		_args.emplace_back(trimmed);
 	return *this;
 }
 
@@ -51,8 +52,9 @@ string FFMpegEngine::Input::toSingleLine() const
 
 FFMpegEngine::Output& FFMpegEngine::Output::addArg(const string_view& parameter)
 {
-	if (!StringUtils::trim(parameter).empty())
-		_extraArgs.emplace_back(StringUtils::trim(parameter));
+	string_view trimmed = StringUtils::trim(parameter);
+	if (!trimmed.empty())
+		_extraArgs.emplace_back(trimmed);
 	return *this;
 }
 
@@ -500,8 +502,9 @@ string FFMpegEngine::Output::toSingleLine() const
 // ---------------- builder methods ----------------
 
 FFMpegEngine& FFMpegEngine::addGlobalArg(const string_view& arg) {
-	if (!StringUtils::trim(arg).empty())
-	    _globalArgs.emplace_back(StringUtils::trim(arg));
+	string_view trimmed = StringUtils::trim(arg);
+	if (!trimmed.empty())
+	    _globalArgs.emplace_back(trimmed);
     return *this;
 }
 
@@ -583,7 +586,7 @@ FFMpegEngine& FFMpegEngine::vaapiPrepareUpload() {
     if (!_vaapiDevice)
     	_vaapiDevice = "/dev/dri/renderD128";
     // It's user's job to craft proper filter_complex, but we add a helper global arg
-    _globalArgs.push_back(std::format("-vaapi_device {}", *_vaapiDevice));
+	addGlobalArgs(std::format("-vaapi_device {}", *_vaapiDevice));
     return *this;
 }
 
