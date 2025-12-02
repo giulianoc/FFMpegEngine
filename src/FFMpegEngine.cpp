@@ -74,7 +74,10 @@ void FFMpegEngine::Output::buildArgs(vector<string>& args) const
 		args.emplace_back(map);
 	}
 	if (_copyAllTracks)
-		args.emplace_back("-c copy");
+	{
+		args.emplace_back("-c");
+		args.emplace_back("copy");
+	}
 	else
 	{
 		if (_videoCodec)
