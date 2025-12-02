@@ -73,15 +73,20 @@ void FFMpegEngine::Output::buildArgs(vector<string>& args) const
 		args.emplace_back("-map");
 		args.emplace_back(map);
 	}
-	if (_videoCodec)
+	if (_copyAllTracks)
+		args.emplace_back("-c copy");
+	else
 	{
-		args.emplace_back("-c:v");
-		args.emplace_back(*_videoCodec);
-	}
-	if (_audioCodec)
-	{
-		args.emplace_back("-c:a");
-		args.emplace_back(*_audioCodec);
+		if (_videoCodec)
+		{
+			args.emplace_back("-c:v");
+			args.emplace_back(*_videoCodec);
+		}
+		if (_audioCodec)
+		{
+			args.emplace_back("-c:a");
+			args.emplace_back(*_audioCodec);
+		}
 	}
 	if (!_videoFilters.empty())
 	{

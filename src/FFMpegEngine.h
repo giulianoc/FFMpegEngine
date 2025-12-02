@@ -333,7 +333,10 @@ public:
     	friend FFMpegEngine;
 
     	string _path;
-        vector<string> _maps;
+
+    	vector<string> _maps;
+    	bool _copyAllTracks{};
+
         vector<string> _videoFilters;
         vector<string> _audioFilters;
         optional<string> _videoCodec;
@@ -344,6 +347,7 @@ public:
     	explicit Output(const string_view& path) : _path(path) {}
 		Output& setPath(const string_view& path) { _path = path; return *this; }
         Output& map(string_view m) { _maps.emplace_back(m); return *this; }
+    	Output& setCopyAllTracks(const bool copyAllTracks) { _copyAllTracks = copyAllTracks; return *this; }
         Output& withVideoCodec(string_view c) { _videoCodec = string(c); return *this; }
         Output& withAudioCodec(string_view c) { _audioCodec = string(c); return *this; }
         Output& addVideoFilter(string_view f) { _videoFilters.emplace_back(f); return *this; }
