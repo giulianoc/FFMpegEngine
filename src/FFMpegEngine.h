@@ -138,7 +138,7 @@ public:
 				_errorMessages.pop();
 		}
 
-		json toJson()
+		json toJson(const bool errorMessagesToBeReset = false)
 		{
 			shared_lock locker(_callbackDataMutex);
 
@@ -173,10 +173,20 @@ public:
 				root["progressPercent"] = nullptr;
 
 			json errorMessagesRoot = json::array();
-			auto tmp = _errorMessages;   // copia della queue
-			while (!tmp.empty()) {
-				errorMessagesRoot.push_back(tmp.front());
-				tmp.pop();
+			if (errorMessagesToBeReset)
+			{
+				while (!_errorMessages.empty()) {
+					errorMessagesRoot.push_back(_errorMessages.front());
+					_errorMessages.pop();
+				}
+			}
+			else
+			{
+				auto tmp = _errorMessages;   // copia della queue
+				while (!tmp.empty()) {
+					errorMessagesRoot.push_back(tmp.front());
+					tmp.pop();
+				}
 			}
 			root["errorMessages"] = errorMessagesRoot;
 			return root;
