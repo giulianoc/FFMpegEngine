@@ -252,7 +252,7 @@ public:
 			return _processedOutputTimestampMilliSecs;
 		}
 
-		uint16_t getTimestampDiscontinuityCount()
+		uint32_t getTimestampDiscontinuityCount()
 		{
 			shared_lock locker(_callbackDataMutex);
 			return _timestampDiscontinuityCount;
@@ -310,7 +310,7 @@ public:
 		bool _urlForbidden{};
 		bool _urlNotFound{};
 		bool _nonMonotonousDts{};
-		uint16_t _timestampDiscontinuityCount{};
+		uint32_t _timestampDiscontinuityCount{};
 
 		optional<int32_t> _signal{};
 
