@@ -38,4 +38,5 @@ add_executable(ffMpegEngine ${SOURCES} ${HEADERS})
 target_link_libraries (ffMpegEngine FFMpegEngine)
 target_link_libraries (ffMpegEngine StringUtils)
 target_link_libraries (ffMpegEngine ProcessUtility)
+target_link_libraries (ffMpegEngine Datetime)
 
