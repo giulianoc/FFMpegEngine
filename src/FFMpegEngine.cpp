@@ -743,7 +743,7 @@ void FFMpegEngine::reset()
 	_outputs.clear();
 	_filterComplex.clear();
 	_globalArgs.clear();
-	_hwAccel = nullptr;
+	_hwAccel = nullopt;
 	_vaapiDevice = nullopt;
 	_durationMilliSeconds = nullopt;
 	_internalCallbackData->reset();
