@@ -1,7 +1,10 @@
 
 #include "FFMpegEngine.h"
-#include "spdlog/spdlog.h"
+
+#include "Datetime.h"
 #include "StringUtils.h"
+#include "spdlog/spdlog.h"
+
 #include <chrono>
 #include <cstring>
 #include <fstream>
@@ -235,6 +238,8 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					error = true;
 					if (callbackData->_ffmpegOutputLogFile)
 					{
+						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime());
+						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 						callbackData->_ffmpegOutputLogFile.write("\n", 1);
 						callbackData->_ffmpegOutputLogFile.flush();
@@ -253,6 +258,8 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					error = true;
 					if (callbackData->_ffmpegOutputLogFile)
 					{
+						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime());
+						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 						callbackData->_ffmpegOutputLogFile.write("\n", 1);
 						callbackData->_ffmpegOutputLogFile.flush();
@@ -274,6 +281,8 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					error = true;
 					if (callbackData->_ffmpegOutputLogFile)
 					{
+						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime());
+						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 						callbackData->_ffmpegOutputLogFile.write("\n", 1);
 						callbackData->_ffmpegOutputLogFile.flush();
@@ -427,6 +436,8 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 
 						if (callbackData->_ffmpegOutputLogFile)
 						{
+							const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime());
+							callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 							callbackData->_ffmpegOutputLogFile.write(cleanffmpegLine.data(), cleanffmpegLine.size());
 							callbackData->_ffmpegOutputLogFile.write("\n", 1);
 							callbackData->_ffmpegOutputLogFile.flush();
@@ -480,6 +491,8 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 
 				if (callbackData->_ffmpegOutputLogFile)
 				{
+					const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime());
+					callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 					callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 					callbackData->_ffmpegOutputLogFile.write("\n", 1);
 					callbackData->_ffmpegOutputLogFile.flush();
