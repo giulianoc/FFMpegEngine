@@ -238,7 +238,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					error = true;
 					if (callbackData->_ffmpegOutputLogFile)
 					{
-						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%dT%H:%M:%S", true));
+						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
 						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 						callbackData->_ffmpegOutputLogFile.write("\n", 1);
@@ -258,7 +258,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					error = true;
 					if (callbackData->_ffmpegOutputLogFile)
 					{
-						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%dT%H:%M:%S", true));
+						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
 						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 						callbackData->_ffmpegOutputLogFile.write("\n", 1);
@@ -281,7 +281,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					error = true;
 					if (callbackData->_ffmpegOutputLogFile)
 					{
-						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%dT%H:%M:%S", true));
+						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
 						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 						callbackData->_ffmpegOutputLogFile.write("\n", 1);
@@ -436,7 +436,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 
 						if (callbackData->_ffmpegOutputLogFile)
 						{
-							const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%dT%H:%M:%S", true));
+							const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
 							callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 							callbackData->_ffmpegOutputLogFile.write(cleanffmpegLine.data(), cleanffmpegLine.size());
 							callbackData->_ffmpegOutputLogFile.write("\n", 1);
@@ -491,7 +491,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 
 				if (callbackData->_ffmpegOutputLogFile)
 				{
-					const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%dT%H:%M:%S", true));
+					const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
 					callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 					callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 					callbackData->_ffmpegOutputLogFile.write("\n", 1);
