@@ -10,6 +10,7 @@
 #include <string_view>
 #include <vector>
 #include <fstream>
+#include <regex>
 #include <shared_mutex>
 
 #include "nlohmann/json.hpp"
@@ -57,7 +58,11 @@ public:
 			clonedData->_urlForbidden = _urlForbidden;
 			clonedData->_urlNotFound = _urlNotFound;
 			clonedData->_nonMonotonousDts = _nonMonotonousDts;
+			clonedData->_tlsError = _tlsError;
+			clonedData->_openResourceError = _openResourceError;
+			clonedData->_segmentFailedTooManyTimes = _segmentFailedTooManyTimes;
 			clonedData->_timestampDiscontinuityCount = _timestampDiscontinuityCount;
+			clonedData->_discontinuities = _discontinuities;
 
 			clonedData->_signal = _signal;
 
@@ -77,13 +82,19 @@ public:
 			if (_errorMessages.size() >= maxErrorsStored)
 				_errorMessages.pop();
 			_errorMessages.push(errorMessage);
-			string lowerErrorMessage = StringUtils::lowerCase(errorMessage);
+			const string lowerErrorMessage = StringUtils::lowerCase(errorMessage);
 			if (!_urlForbidden && lowerErrorMessage.starts_with("403 forbidden"))
 				_urlForbidden = true;
 			if (!_urlNotFound && lowerErrorMessage.starts_with("404 not found"))
 				_urlNotFound = true;
 			if (!_nonMonotonousDts && lowerErrorMessage.find("non-monotonous dts in output stream") != string::npos)
 				_nonMonotonousDts = true;
+			if (!_tlsError && lowerErrorMessage.find("tlsv1 alert internal error") != string::npos)
+				_tlsError = true;
+			if (!_openResourceError && lowerErrorMessage.find("unable to open resource") != string::npos)
+				_openResourceError = true;
+			if (!_segmentFailedTooManyTimes && regex_match(lowerErrorMessage, regex("Segment .* failed too many times, skipping")))
+				_segmentFailedTooManyTimes = true;
 			// [vist#0:4/h264 @ 0x55562ce99140] timestamp discontinuity (stream id=3): -20048800, new offset= 82
 			// [aist#0:0/aac @ 0x55562ced7800] timestamp discontinuity (stream id=0): 20048803, new offset= -20048721
 			// [vist#0:4/h264 @ 0x55562ce99140] timestamp discontinuity (stream id=3): -20048800, new offset= 79
@@ -97,9 +108,19 @@ public:
 			// Abbiamo tanti messaggi "timestamp discontinuity" (vedi sopra)
 			// con i valori frame=, size=, time= corretti.
 			// Indica che lo streaming sta andando avanti ma mancano tanti timestamp.
-			// Il risultato è che il play non funziona per cui bisogna fare un restart.
+			// Questo messaggio di per se non richiede un restart, servirebbe il restart se
+			// 1. ≥ N volte in M secondi
+			// 2. dup crescente + discontinuity
 			if (lowerErrorMessage.find("timestamp discontinuity") != string::npos)
+			{
 				_timestampDiscontinuityCount++;
+				const auto now = chrono::steady_clock::now();
+				_discontinuities.push_back(now);
+				{
+					while (!_discontinuities.empty() && now - _discontinuities.front() > _timestampDiscontinuitiTimeWindow)
+						_discontinuities.pop_front();
+				}
+			}
 		}
 
 		void reset()
@@ -128,7 +149,11 @@ public:
 			_urlForbidden = false;
 			_urlNotFound = false;
 			_nonMonotonousDts = false;
+			_tlsError = false;
+			_openResourceError = false;
+			_segmentFailedTooManyTimes = false;
 			_timestampDiscontinuityCount = 0;
+			_discontinuities.clear();
 
 			_signal = nullopt;
 
@@ -161,6 +186,7 @@ public:
 			root["urlNotFound"] = _urlNotFound;
 			root["nonMonotonousDts"] = _nonMonotonousDts;
 			root["timestampDiscontinuityCount"] = _timestampDiscontinuityCount;
+			root[std::format("timestampDiscontinuityCount in {} seconds", _timestampDiscontinuitiTimeWindow)] = _discontinuities.size();
 			root["signal"] = this->_signal ? *this->_signal : -1;
 			root["finished"] = *_finished;
 			if (_startTime && _endTime)
@@ -252,10 +278,23 @@ public:
 			return _processedOutputTimestampMilliSecs;
 		}
 
-		uint32_t getTimestampDiscontinuityCount()
+		// restart se si verificano entrambi gli errori
+		bool getTlsAndOpenResourceError()
 		{
 			shared_lock locker(_callbackDataMutex);
-			return _timestampDiscontinuityCount;
+			return _tlsError && _openResourceError;
+		}
+
+		bool getSegmentFailedTooManyTimes()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _segmentFailedTooManyTimes;
+		}
+
+		size_t getTimestampDiscontinuityCountInTimeWindow()
+		{
+			shared_lock locker(_callbackDataMutex);
+			return _discontinuities.size();
 		}
 
 		double getBitRateKbps()
@@ -278,10 +317,13 @@ public:
 			"unknown encoder",
 			"invalid argument",
 			"unrecognized option",
-			"timestamp discontinuity",
+			"timestamp discontinuity", // restart se ≥ N volte in M secondi. Es.: ≥ 5 volte in 30s oppure crescita continua per 60s
 			"403 forbidden", // url forbidden
 			"non-monotonous dts in output stream",
-			"404 not found"	// url not found
+			"404 not found",	// url not found
+			"ssl routines::tlsv1 alert internal error", // se si verifica questo error AND il prossimo, restart: combinazione di errori irreversibili
+			"unable to open resource",
+			"Segment .* failed too many times, skipping" // restart: errore irreversibile
 		};
 
         friend void FFMpegEngine::ffmpegLineCallback(const string_view&);
@@ -310,7 +352,14 @@ public:
 		bool _urlForbidden{};
 		bool _urlNotFound{};
 		bool _nonMonotonousDts{};
+		bool _tlsError{};
+		bool _openResourceError{};
+		bool _segmentFailedTooManyTimes{};
+
 		uint32_t _timestampDiscontinuityCount{};
+		// discontinuities: serve per capire se ≥ N volte in M secondi
+		static constexpr auto _timestampDiscontinuitiTimeWindow = chrono::seconds(30);
+		deque<std::chrono::steady_clock::time_point> _discontinuities; // steady_clock → immune a cambi ora / NTP
 
 		optional<int32_t> _signal{};
 
