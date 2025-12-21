@@ -114,6 +114,8 @@ public:
 			if (lowerErrorMessage.find("timestamp discontinuity") != string::npos)
 			{
 				_timestampDiscontinuityCount++;
+
+				// finchè non abbiamo un nuovo discontinuity, _discontinuities non sarà aggiornato. Penso vada bene.
 				const auto now = chrono::steady_clock::now();
 				_discontinuities.push_back(now);
 				{
