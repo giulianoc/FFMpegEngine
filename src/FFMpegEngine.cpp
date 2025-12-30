@@ -209,7 +209,8 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 							_referenceToLog, callbackData->_outputFfmpegPathFileName
 						);
 						SPDLOG_ERROR(errorMessage);
-						callbackData->pushErrorMessage(errorMessage);
+						callbackData->pushErrorMessage(std::format("{} {}",
+							Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true), errorMessage));
 					}
 				}
 			}
@@ -231,7 +232,8 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 			{
 				if (ffmpegLineLower.find(pattern) != std::string::npos)
 				{
-					callbackData->pushErrorMessage(std::format("{}: {}", pattern, ffmpegLine));
+					callbackData->pushErrorMessage(std::format("{} {}: {}",
+						Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true), pattern, ffmpegLine));
 					SPDLOG_ERROR("ffmpegLineCallback, {} detected"
 						"{}"
 						", ffmpegLine: {}", pattern, _referenceToLog, ffmpegLine);
@@ -251,7 +253,8 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 				// generic error
 				if (ffmpegLineLower.find("error") != std::string::npos)
 				{
-					callbackData->pushErrorMessage(std::format("error: {}", ffmpegLine));
+					callbackData->pushErrorMessage(std::format("{} error: {}",
+						Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true), ffmpegLine));
 					SPDLOG_ERROR("ffmpegLineCallback, error detected"
 						"{}"
 						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
@@ -274,7 +277,8 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 						|| ffmpegLineLower.find("signal: 15") != string::npos)
 						callbackData->_signal = 15;
 
-					callbackData->pushErrorMessage(std::format("signal: {}", ffmpegLine));
+					callbackData->pushErrorMessage(std::format("{} signal: {}",
+						Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true), ffmpegLine));
 					SPDLOG_ERROR("ffmpegLineCallback, signal detected"
 						"{}"
 						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
