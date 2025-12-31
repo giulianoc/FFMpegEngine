@@ -16,25 +16,23 @@
 #include "nlohmann/json.hpp"
 
 
-using namespace std;
-
-using json = nlohmann::json;
-using ordered_json = nlohmann::ordered_json;
-using namespace nlohmann::literals;
+// using json = nlohmann::json;
+// using ordered_json = nlohmann::ordered_json;
+// using namespace nlohmann::literals;
 
 class FFMpegEngine {
 private:
-	void ffmpegLineCallback(const string_view& ffmpegLine);
+	void ffmpegLineCallback(const std::string_view& ffmpegLine);
 public:
 	class CallbackData {
 	public:
 		CallbackData() = default;
 
-		shared_ptr<CallbackData> clone()
+		std::shared_ptr<CallbackData> clone()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 
-			auto clonedData = make_shared<CallbackData>();
+			auto clonedData = std::make_shared<CallbackData>();
 
 			clonedData->_finished = _finished;
 
@@ -69,31 +67,31 @@ public:
 			return clonedData;
 		}
 
-		void setOutputFfmpegPathFileName(const string &outputFfmpegPathFileName)
+		void setOutputFfmpegPathFileName(const std::string &outputFfmpegPathFileName)
 		{
-			unique_lock locker(_callbackDataMutex);
+			std::unique_lock locker(_callbackDataMutex);
 			_outputFfmpegPathFileName = outputFfmpegPathFileName;
 		}
 
 		static constexpr int32_t maxErrorsStored = 50;
-		void pushErrorMessage(const string& errorMessage)
+		void pushErrorMessage(const std::string& errorMessage)
 		{
-			unique_lock locker(_callbackDataMutex);
+			std::unique_lock locker(_callbackDataMutex);
 			if (_errorMessages.size() >= maxErrorsStored)
 				_errorMessages.pop();
 			_errorMessages.push(errorMessage);
-			const string lowerErrorMessage = StringUtils::lowerCase(errorMessage);
+			const std::string lowerErrorMessage = StringUtils::lowerCase(errorMessage);
 			if (!_urlForbidden && lowerErrorMessage.starts_with("403 forbidden"))
 				_urlForbidden = true;
 			if (!_urlNotFound && lowerErrorMessage.starts_with("404 not found"))
 				_urlNotFound = true;
-			if (!_nonMonotonousDts && lowerErrorMessage.find("non-monotonous dts in output stream") != string::npos)
+			if (!_nonMonotonousDts && lowerErrorMessage.find("non-monotonous dts in output stream") != std::string::npos)
 				_nonMonotonousDts = true;
-			if (!_tlsError && lowerErrorMessage.find("tlsv1 alert internal error") != string::npos)
+			if (!_tlsError && lowerErrorMessage.find("tlsv1 alert internal error") != std::string::npos)
 				_tlsError = true;
-			if (!_openResourceError && lowerErrorMessage.find("unable to open resource") != string::npos)
+			if (!_openResourceError && lowerErrorMessage.find("unable to open resource") != std::string::npos)
 				_openResourceError = true;
-			if (!_segmentFailedTooManyTimes && regex_match(lowerErrorMessage, regex("Segment .* failed too many times, skipping")))
+			if (!_segmentFailedTooManyTimes && regex_match(lowerErrorMessage, std::regex("Segment .* failed too many times, skipping")))
 				_segmentFailedTooManyTimes = true;
 			// [vist#0:4/h264 @ 0x55562ce99140] timestamp discontinuity (stream id=3): -20048800, new offset= 82
 			// [aist#0:0/aac @ 0x55562ced7800] timestamp discontinuity (stream id=0): 20048803, new offset= -20048721
@@ -111,12 +109,12 @@ public:
 			// Questo messaggio di per se non richiede un restart, servirebbe il restart se
 			// 1. ≥ N volte in M secondi
 			// 2. dup crescente + discontinuity
-			if (lowerErrorMessage.find("timestamp discontinuity") != string::npos)
+			if (lowerErrorMessage.find("timestamp discontinuity") != std::string::npos)
 			{
 				_timestampDiscontinuityCount++;
 
 				// finchè non abbiamo un nuovo discontinuity, _discontinuities non sarà aggiornato. Penso vada bene.
-				const auto now = chrono::steady_clock::now();
+				const auto now = std::chrono::steady_clock::now();
 				_discontinuities.push_back(now);
 				{
 					while (!_discontinuities.empty() && now - _discontinuities.front() > _timestampDiscontinuitiTimeWindow)
@@ -127,17 +125,17 @@ public:
 
 		void reset()
 		{
-			unique_lock locker(_callbackDataMutex);
+			std::unique_lock locker(_callbackDataMutex);
 
 			if (_ffmpegOutputLogFile)
 				_ffmpegOutputLogFile.close();
 
 			_outputFfmpegPathFileName = "";
-			_startTime = nullopt;
-			_endTime = nullopt;
+			_startTime = std::nullopt;
+			_endTime = std::nullopt;
 			_processedFrames = 0;
 			_framePerSeconds = 0.0;
-			_processedOutputTimestampMilliSecs = chrono::milliseconds(0);
+			_processedOutputTimestampMilliSecs = std::chrono::milliseconds(0);
 			_speed = 0.0;
 			_dropFrames = 0;
 			_dupFrames = 0;
@@ -145,7 +143,7 @@ public:
 			_stream_1_0_q = 0.0;
 			_processedSizeKBps = 0;
 			_bitRateKbps = 0.0;
-			_progressPercent = nullopt;
+			_progressPercent = std::nullopt;
 			_avgBitRateKbps = 0.0;
 
 			_urlForbidden = false;
@@ -157,21 +155,21 @@ public:
 			_timestampDiscontinuityCount = 0;
 			_discontinuities.clear();
 
-			_signal = nullopt;
+			_signal = std::nullopt;
 
-			_finished = nullopt;
+			_finished = std::nullopt;
 
 			while (!_errorMessages.empty())
 				_errorMessages.pop();
 		}
 
-		json toJson(const bool errorMessagesToBeReset = false)
+		nlohmann::json toJson(const bool errorMessagesToBeReset = false)
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 
 			if (!_finished) // indica che Data non è stato usato
 				return nullptr;
-			json root;
+			nlohmann::json root;
 			root["outputFfmpegPathFileName"] = _outputFfmpegPathFileName;
 			root["processedFrames"] = _processedFrames;
 			root["framePerSeconds"] = _framePerSeconds;
@@ -192,7 +190,7 @@ public:
 			root["signal"] = this->_signal ? *this->_signal : -1;
 			root["finished"] = *_finished;
 			if (_startTime && _endTime)
-				root["elapsed"] = chrono::duration_cast<chrono::milliseconds>(*_endTime - *_startTime).count();
+				root["elapsed"] = std::chrono::duration_cast<std::chrono::milliseconds>(*_endTime - *_startTime).count();
 			else
 				root["elapsed"] = nullptr;
 			if (_progressPercent)
@@ -200,7 +198,7 @@ public:
 			else
 				root["progressPercent"] = nullptr;
 
-			json errorMessagesRoot = json::array();
+			nlohmann::json errorMessagesRoot = nlohmann::json::array();
 			if (errorMessagesToBeReset)
 			{
 				while (!_errorMessages.empty()) {
@@ -220,94 +218,94 @@ public:
 			return root;
 		}
 
-		optional<bool> getFinished()
+		std::optional<bool> getFinished()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _finished;
 		}
 
-		optional<double> getProgressPercent()
+		std::optional<double> getProgressPercent()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _progressPercent;
 		}
 
-		optional<int32_t> getSignal()
+		std::optional<int32_t> getSignal()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _signal;
 		}
 
 		bool getUrlForbidden()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _urlForbidden;
 		}
 
 		bool getUrlNotFound()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _urlNotFound;
 		}
 
 		bool getNonMonotonousDts()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _nonMonotonousDts;
 		}
 
 		int32_t getProcessedFrames()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _processedFrames;
 		}
 
 		double getFramePerSeconds()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _framePerSeconds;
 		}
 
 		size_t getProcessedSizeKBps()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _processedSizeKBps;
 		}
 
-		chrono::milliseconds getProcessedOutputTimestampMilliSecs()
+		std::chrono::milliseconds getProcessedOutputTimestampMilliSecs()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _processedOutputTimestampMilliSecs;
 		}
 
 		// restart se si verificano entrambi gli errori
 		bool getTlsAndOpenResourceError()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _tlsError && _openResourceError;
 		}
 
 		bool getSegmentFailedTooManyTimes()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _segmentFailedTooManyTimes;
 		}
 
 		size_t getTimestampDiscontinuityCountInTimeWindow()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _discontinuities.size();
 		}
 
 		double getBitRateKbps()
 		{
-			shared_lock locker(_callbackDataMutex);
+			std::shared_lock locker(_callbackDataMutex);
 			return _bitRateKbps;
 		}
 
 	private:
 		// lower case
-		inline static const std::vector<string> errorPatterns = {
+		inline static const std::vector<std::string> errorPatterns = {
 			"invalid data found",
 			"error while decoding",
 			"connection refused",
@@ -328,19 +326,19 @@ public:
 			"Segment .* failed too many times, skipping" // restart: errore irreversibile
 		};
 
-        friend void FFMpegEngine::ffmpegLineCallback(const string_view&);
+        friend void FFMpegEngine::ffmpegLineCallback(const std::string_view&);
 
-		shared_mutex _callbackDataMutex;
+		std::shared_mutex _callbackDataMutex;
 
-		string _outputFfmpegPathFileName;
-		ofstream _ffmpegOutputLogFile;
+		std::string _outputFfmpegPathFileName;
+		std::ofstream _ffmpegOutputLogFile;
 
-		optional<chrono::system_clock::time_point> _startTime{};
-		optional<chrono::system_clock::time_point> _endTime{};
+		std::optional<std::chrono::system_clock::time_point> _startTime{};
+		std::optional<std::chrono::system_clock::time_point> _endTime{};
 
 		int32_t _processedFrames{};
 		double _framePerSeconds{};
-		chrono::milliseconds _processedOutputTimestampMilliSecs{};
+		std::chrono::milliseconds _processedOutputTimestampMilliSecs{};
 		double _speed{}; // Utile per capire se il server sta performando bene
 		int32_t _dropFrames{};
 		int32_t _dupFrames{};
@@ -348,7 +346,7 @@ public:
 		double _stream_1_0_q{};
 		size_t _processedSizeKBps{};
 		double _bitRateKbps{};
-		optional<double> _progressPercent{}; // calcolato da noi se durata è stata settata
+		std::optional<double> _progressPercent{}; // calcolato da noi se durata è stata settata
 		double _avgBitRateKbps{};			 // calculated by us
 
 		bool _urlForbidden{};
@@ -360,90 +358,90 @@ public:
 
 		uint32_t _timestampDiscontinuityCount{};
 		// discontinuities: serve per capire se ≥ N volte in M secondi
-		static constexpr auto _timestampDiscontinuitiTimeWindow = chrono::seconds(30);
-		deque<std::chrono::steady_clock::time_point> _discontinuities; // steady_clock → immune a cambi ora / NTP
+		static constexpr auto _timestampDiscontinuitiTimeWindow = std::chrono::seconds(30);
+		std::deque<std::chrono::steady_clock::time_point> _discontinuities; // steady_clock → immune a cambi ora / NTP
 
-		optional<int32_t> _signal{};
+		std::optional<int32_t> _signal{};
 
 		// nullopt se Data non è stato utilizzato
 		// false se viene usato ma non è ancora terminato
 		// true se viene usato ed è terminato (progress=end)
-		optional<bool> _finished = nullopt;
+		std::optional<bool> _finished = std::nullopt;
 
-		queue<string> _errorMessages;
+		std::queue<std::string> _errorMessages;
 	};
 
     class Input {
     	friend FFMpegEngine;
 
-		string _source;
-        vector<string> _args;
+		std::string _source;
+        std::vector<std::string> _args;
 		int32_t _durationSeconds = -1;
     public:
     	Input() = default;
-    	explicit Input(const string_view& source) : _source(source) {}
-		Input& setSource(const string_view& source) { _source = source; return *this; }
+    	explicit Input(const std::string_view& source) : _source(source) {}
+		Input& setSource(const std::string_view& source) { _source = source; return *this; }
 		Input& setDurationSeconds(const int32_t durationSeconds) { _durationSeconds = durationSeconds; return *this; }
-		Input& addArg(const string_view& parameter);
-    	Input& addArgs(const string& parameters);
-		void buildArgs(vector<string> &args) const;
-		[[nodiscard]] string toSingleLine() const;
+		Input& addArg(const std::string_view& parameter);
+    	Input& addArgs(const std::string& parameters);
+		void buildArgs(std::vector<std::string> &args) const;
+		[[nodiscard]] std::string toSingleLine() const;
 	};
 
     class Output {
     	friend FFMpegEngine;
 
-    	string _path;
+    	std::string _path;
 
-    	vector<string> _maps;
+    	std::vector<std::string> _maps;
     	bool _copyAllTracks{};
 
-        vector<string> _videoFilters;
-        vector<string> _audioFilters;
-        optional<string> _videoCodec;
-        optional<string> _audioCodec;
-        vector<string> _extraArgs;
+        std::vector<std::string> _videoFilters;
+        std::vector<std::string> _audioFilters;
+        std::optional<std::string> _videoCodec;
+        std::optional<std::string> _audioCodec;
+        std::vector<std::string> _extraArgs;
     public:
         Output() = default;
-    	explicit Output(const string_view& path) : _path(path) {}
-		Output& setPath(const string_view& path) { _path = path; return *this; }
-        Output& map(string_view m) { _maps.emplace_back(m); return *this; }
+    	explicit Output(const std::string_view& path) : _path(path) {}
+		Output& setPath(const std::string_view& path) { _path = path; return *this; }
+        Output& map(std::string_view m) { _maps.emplace_back(m); return *this; }
     	Output& setCopyAllTracks(const bool copyAllTracks) { _copyAllTracks = copyAllTracks; return *this; }
-        Output& withVideoCodec(string_view c) { _videoCodec = string(c); return *this; }
-        Output& withAudioCodec(string_view c) { _audioCodec = string(c); return *this; }
-        Output& addVideoFilter(string_view f) { _videoFilters.emplace_back(f); return *this; }
+        Output& withVideoCodec(std::string_view c) { _videoCodec = std::string(c); return *this; }
+        Output& withAudioCodec(std::string_view c) { _audioCodec = std::string(c); return *this; }
+        Output& addVideoFilter(std::string_view f) { _videoFilters.emplace_back(f); return *this; }
     	size_t videoFilterSize() const { return _videoFilters.size(); }
-        Output& addAudioFilter(string_view f) { _audioFilters.emplace_back(f); return *this; }
+        Output& addAudioFilter(std::string_view f) { _audioFilters.emplace_back(f); return *this; }
     	size_t audioFilterSize() const { return _audioFilters.size(); }
-        Output& addArg(const string_view& parameter);
-     	Output& addArgs(const string& parameters);
-    	void buildArgs(vector<string>& args) const;
-		[[nodiscard]] string toSingleLine() const;
+        Output& addArg(const std::string_view& parameter);
+     	Output& addArgs(const std::string& parameters);
+    	void buildArgs(std::vector<std::string>& args) const;
+		[[nodiscard]] std::string toSingleLine() const;
    };
 
     FFMpegEngine()
     {
-    	_internalCallbackData = make_shared<CallbackData>();
+    	_internalCallbackData = std::make_shared<CallbackData>();
     };
 
     // builder
-    FFMpegEngine& addGlobalArg(const string_view &arg);
-	FFMpegEngine& addGlobalArgs(const string& parameters);
-    Input& addInput(string_view source);
+    FFMpegEngine& addGlobalArg(const std::string_view &arg);
+	FFMpegEngine& addGlobalArgs(const std::string& parameters);
+    Input& addInput(std::string_view source);
     Input& addInput();
-    Output& addOutput(string_view path);
+    Output& addOutput(std::string_view path);
     Output& addOutput();
-    FFMpegEngine& addFilterComplex(const string_view &fc);
+    FFMpegEngine& addFilterComplex(const std::string_view &fc);
 
     // convenience inputs
-	Input& addUdpInput(const string_view& target, optional<int> listenTimeoutMilliSeconds = {});
-    Input& addSrtInput(const string_view &target, optional<int> latencyMilliSeconds = {});
-    Input& addRtmpInput(const string_view &target);
-    Input& addPipeInput(const string_view &spec);
+	Input& addUdpInput(const std::string_view& target, std::optional<int> listenTimeoutMilliSeconds = {});
+    Input& addSrtInput(const std::string_view &target, std::optional<int> latencyMilliSeconds = {});
+    Input& addRtmpInput(const std::string_view &target);
+    Input& addPipeInput(const std::string_view &spec);
 
     // HW accel
     FFMpegEngine& enableNvenc();
-    FFMpegEngine& enableVaapi(const string_view &device = "/dev/dri/renderD128");
+    FFMpegEngine& enableVaapi(const std::string_view &device = "/dev/dri/renderD128");
     FFMpegEngine& enableVideoToolbox();
 
     // VAAPI convenience: prepare upload and choose codec names (adds filters/args as needed)
@@ -451,39 +449,39 @@ public:
     FFMpegEngine& vaapiPrepareUpload();
 
     // TODO: watermark
-    FFMpegEngine& addWatermark(Output& out, string_view overlayLabel, string_view pos = "10:10");
+    FFMpegEngine& addWatermark(Output& out, std::string_view overlayLabel, std::string_view pos = "10:10");
 
     // duration for percent calculation (ms). If set, progress percent = out_time_ms / durationMilliSeconds
     void setDurationMilliSeconds(int64_t durationMilliSeconds);
 	double getProgressPercent() const;
 
 	// ---------------- Utility methods ----------------
-	static string toSingleLine(vector<string> &args) ;
+	static std::string toSingleLine(std::vector<std::string> &args) ;
 
 	// build command (not shell-quoted). useProgressPipe true adds -progress pipe:1
-    [[nodiscard]] string build(bool useProgressPipe = false) const;
-    [[nodiscard]] vector<string> buildArgs(bool useProgressPipe = false) const;
+    [[nodiscard]] std::string build(bool useProgressPipe = false) const;
+    [[nodiscard]] std::vector<std::string> buildArgs(bool useProgressPipe = false) const;
 
-	void run(const string& ffmpegPath, ProcessUtility::ProcessId& processId,
-		int &iReturnedStatus, const string& referenceToLog,
-		const shared_ptr<CallbackData> &clientCallbackData = nullptr, const string& outputFfmpegPathFileName = "");
+	void run(const std::string& ffmpegPath, ProcessUtility::ProcessId& processId,
+		int &iReturnedStatus, const std::string& referenceToLog,
+		const std::shared_ptr<CallbackData> &clientCallbackData = nullptr, const std::string& outputFfmpegPathFileName = "");
 
-	[[nodiscard]] string toPrettyString(int indentSpaces = 2) const;
-	[[nodiscard]] string toSingleLine(bool useProgressPipe = false) const;
+	[[nodiscard]] std::string toPrettyString(int indentSpaces = 2) const;
+	[[nodiscard]] std::string toSingleLine(bool useProgressPipe = false) const;
 
 	void reset();
 
 private:
-    vector<Input> _inputs;
-    vector<Output> _outputs;
-    vector<string> _filterComplex;
-    vector<string> _globalArgs;
-    optional<string> _hwAccel;
-    optional<string> _vaapiDevice;
+    std::vector<Input> _inputs;
+    std::vector<Output> _outputs;
+    std::vector<std::string> _filterComplex;
+    std::vector<std::string> _globalArgs;
+    std::optional<std::string> _hwAccel;
+    std::optional<std::string> _vaapiDevice;
 
-    optional<int64_t> _durationMilliSeconds;
+    std::optional<int64_t> _durationMilliSeconds;
 
-	shared_ptr<CallbackData> _internalCallbackData;
-	shared_ptr<CallbackData> _clientCallbackData;
-	string _referenceToLog;
+	std::shared_ptr<CallbackData> _internalCallbackData;
+	std::shared_ptr<CallbackData> _clientCallbackData;
+	std::string _referenceToLog;
 };

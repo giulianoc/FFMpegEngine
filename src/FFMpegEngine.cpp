@@ -13,23 +13,23 @@
 
 // ---------------- Input methods ----------------
 
-FFMpegEngine::Input& FFMpegEngine::Input::addArg(const string_view& parameter)
+FFMpegEngine::Input& FFMpegEngine::Input::addArg(const  std::string_view& parameter)
 {
-	string_view trimmed = StringUtils::trim(parameter);
+	 std::string_view trimmed = StringUtils::trim(parameter);
 	if (!trimmed.empty())
 		_args.emplace_back(trimmed);
 	return *this;
 }
 
-FFMpegEngine::Input& FFMpegEngine::Input::addArgs(const string& parameters)
+FFMpegEngine::Input& FFMpegEngine::Input::addArgs(const  std::string& parameters)
 {
 	for (auto&& tok :
-		parameters | views::split(' ') | views::filter([](auto &&rng){ return !ranges::empty(rng); }))
+		parameters | std::views::split(' ') | std::views::filter([](auto &&rng){ return !std::ranges::empty(rng); }))
 		_args.emplace_back(tok.begin(), tok.end());
 	return *this;
 }
 
-void FFMpegEngine::Input::buildArgs(vector<string>& args) const
+void FFMpegEngine::Input::buildArgs( std::vector< std::string>& args) const
 {
 	for (auto& arg : _args)
 		args.emplace_back(arg);
@@ -42,9 +42,9 @@ void FFMpegEngine::Input::buildArgs(vector<string>& args) const
 	args.emplace_back(_source);
 }
 
-string FFMpegEngine::Input::toSingleLine() const
+ std::string FFMpegEngine::Input::toSingleLine() const
 {
-	vector<string> args;
+	 std::vector< std::string> args;
 	buildArgs(args);
 
 	return FFMpegEngine::toSingleLine(args);
@@ -53,23 +53,23 @@ string FFMpegEngine::Input::toSingleLine() const
 
 // ---------------- Output methods ----------------
 
-FFMpegEngine::Output& FFMpegEngine::Output::addArg(const string_view& parameter)
+FFMpegEngine::Output& FFMpegEngine::Output::addArg(const  std::string_view& parameter)
 {
-	string_view trimmed = StringUtils::trim(parameter);
+	 std::string_view trimmed = StringUtils::trim(parameter);
 	if (!trimmed.empty())
 		_extraArgs.emplace_back(trimmed);
 	return *this;
 }
 
-FFMpegEngine::Output& FFMpegEngine::Output::addArgs(const string& parameters)
+FFMpegEngine::Output& FFMpegEngine::Output::addArgs(const  std::string& parameters)
 {
 	for (auto&& tok :
-		parameters | views::split(' ') | views::filter([](auto &&rng){ return !ranges::empty(rng); }))
+		parameters | std::views::split(' ') | std::views::filter([](auto &&rng){ return !std::ranges::empty(rng); }))
 		_extraArgs.emplace_back(tok.begin(), tok.end());
 	return *this;
 }
 
-void FFMpegEngine::Output::buildArgs(vector<string>& args) const
+void FFMpegEngine::Output::buildArgs( std::vector< std::string>& args) const
 {
 	for (auto& map : _maps)
 	{
@@ -96,7 +96,7 @@ void FFMpegEngine::Output::buildArgs(vector<string>& args) const
 	}
 	if (!_videoFilters.empty())
 	{
-		string vf;
+		 std::string vf;
 		for (size_t index=0; index < _videoFilters.size(); ++index)
 		{
 			vf += _videoFilters[index];
@@ -108,7 +108,7 @@ void FFMpegEngine::Output::buildArgs(vector<string>& args) const
 	}
 	if (!_audioFilters.empty())
 	{
-		string af;
+		 std::string af;
 		for (size_t index = 0; index < _audioFilters.size(); ++index)
 		{
 			af += _audioFilters[index];
@@ -124,9 +124,9 @@ void FFMpegEngine::Output::buildArgs(vector<string>& args) const
 		args.emplace_back(_path);
 }
 
-void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& processId,
-	int &iReturnedStatus, const string& referenceToLog,
-	const shared_ptr<CallbackData> &clientCallbackData, const string& outputFfmpegPathFileName)
+void FFMpegEngine::run(const  std::string& ffmpegPath, ProcessUtility::ProcessId& processId,
+	int &iReturnedStatus, const  std::string& referenceToLog,
+	const std::shared_ptr<CallbackData> &clientCallbackData, const  std::string& outputFfmpegPathFileName)
 {
 	try
 	{
@@ -165,10 +165,10 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 		_referenceToLog = referenceToLog;
 		ProcessUtility::forkAndExecByCallback(
 			std::format("{}/ffmpeg", ffmpegPath), buildArgs(true),
-			[&](const string_view& line) {ffmpegLineCallback(line); },
+			[&](const  std::string_view& line) {ffmpegLineCallback(line); },
 			true, true, processId, iReturnedStatus);
 	}
-	catch (exception& e)
+	catch (std::exception& e)
 	{
 		SPDLOG_ERROR("run failed"
 			", exception: {}", e.what()
@@ -177,20 +177,20 @@ void FFMpegEngine::run(const string& ffmpegPath, ProcessUtility::ProcessId& proc
 	}
 }
 
-void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
+void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 {
 	try
 	{
-		const shared_ptr<CallbackData> callbackData = _clientCallbackData ? _clientCallbackData : _internalCallbackData;
+		const std::shared_ptr<CallbackData> callbackData = _clientCallbackData ? _clientCallbackData : _internalCallbackData;
 
 		// la prima chiamata ricevuta setta finished a false
 		if (!callbackData->_finished)
 		{
 			callbackData->_finished = false;
-			callbackData->_startTime = chrono::system_clock::now();
+			callbackData->_startTime = std::chrono::system_clock::now();
 		}
 		else if (ffmpegLine.empty()) // ffmpegLine vuoto indica fine scrittura su file
-			callbackData->_endTime = chrono::system_clock::now();
+			callbackData->_endTime = std::chrono::system_clock::now();
 
 		// su questo file di log scrivo gli errori e tutto cio che non è gestito
 		if (!callbackData->_outputFfmpegPathFileName.empty())
@@ -199,10 +199,11 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 			{
 				if (!callbackData->_ffmpegOutputLogFile)
 				{
-					callbackData->_ffmpegOutputLogFile.open(callbackData->_outputFfmpegPathFileName, ofstream::binary | ofstream::trunc);
+					callbackData->_ffmpegOutputLogFile.open(callbackData->_outputFfmpegPathFileName,
+						std::ofstream::binary | std::ofstream::trunc);
 					if (!callbackData->_ffmpegOutputLogFile)
 					{
-						string errorMessage = std::format(
+						 std::string errorMessage = std::format(
 							"ffmpegLineCallback, open file failed"
 							"{}"
 							", ffmpegOutputLogPathFileName: {}",
@@ -225,7 +226,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 		// detect errors
 		bool error = false;
 		{
-			const string ffmpegLineLower = StringUtils::lowerCase(ffmpegLine);
+			const  std::string ffmpegLineLower = StringUtils::lowerCase(ffmpegLine);
 
 			// known errors
 			for (auto &pattern : FFMpegEngine::CallbackData::errorPatterns)
@@ -240,7 +241,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					error = true;
 					if (callbackData->_ffmpegOutputLogFile)
 					{
-						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
+						const  std::string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
 						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 						callbackData->_ffmpegOutputLogFile.write("\n", 1);
@@ -261,7 +262,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					error = true;
 					if (callbackData->_ffmpegOutputLogFile)
 					{
-						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
+						const  std::string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
 						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 						callbackData->_ffmpegOutputLogFile.write("\n", 1);
@@ -270,11 +271,11 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 				}
 				else if (ffmpegLineLower.find("signal") != std::string::npos)
 				{
-					if (ffmpegLineLower.find("signal 3") != string::npos // SIGQUIT
-						|| ffmpegLineLower.find("signal: 3") != string::npos)
+					if (ffmpegLineLower.find("signal 3") !=  std::string::npos // SIGQUIT
+						|| ffmpegLineLower.find("signal: 3") !=  std::string::npos)
 						callbackData->_signal = 3;
-					else if (ffmpegLineLower.find("signal 15") != string::npos // SIGTERM
-						|| ffmpegLineLower.find("signal: 15") != string::npos)
+					else if (ffmpegLineLower.find("signal 15") !=  std::string::npos // SIGTERM
+						|| ffmpegLineLower.find("signal: 15") !=  std::string::npos)
 						callbackData->_signal = 15;
 
 					callbackData->pushErrorMessage(std::format("{} signal: {}",
@@ -285,7 +286,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					error = true;
 					if (callbackData->_ffmpegOutputLogFile)
 					{
-						const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
+						const  std::string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
 						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 						callbackData->_ffmpegOutputLogFile.write("\n", 1);
@@ -298,11 +299,11 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 		if (!error)
 		{
 			auto pos = ffmpegLine.find('=');
-			if (pos != string_view::npos)
+			if (pos !=  std::string_view::npos)
 			{
-				string_view key = StringUtils::trim(ffmpegLine.substr(0, pos));
-				string_view value = StringUtils::trim(ffmpegLine.substr(pos + 1));
-				if (value.find('=') != string_view::npos)
+				 std::string_view key = StringUtils::trim(ffmpegLine.substr(0, pos));
+				 std::string_view value = StringUtils::trim(ffmpegLine.substr(pos + 1));
+				if (value.find('=') !=  std::string_view::npos)
 				{
 					// Questo if per gestire casi come:
 					// frame=11 11 fps= 11 q=28.0 q=28.0 size=N/A time=00:00:00.36 bitrate=N/A dup=2 drop=0 speed=0.358x
@@ -314,12 +315,12 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 				{
 					case "frame"_case:
 					{
-						callbackData->_processedFrames = stoi(string(value));
+						callbackData->_processedFrames = stoi( std::string(value));
 						break;
 					}
 					case "fps"_case:
 					{
-						callbackData->_framePerSeconds = stod(string(value));
+						callbackData->_framePerSeconds = stod( std::string(value));
 						break;
 					}
 					case "speed"_case:
@@ -328,28 +329,28 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 						{
 							if (value.back() == 'x')
 								value.remove_suffix(1);
-							callbackData->_speed = std::stod(string(value));
+							callbackData->_speed = std::stod( std::string(value));
 						}
 						break;
 					}
 					case "drop_frames"_case:
 					{
-						callbackData->_dropFrames = stoi(string(value));
+						callbackData->_dropFrames = stoi( std::string(value));
 						break;
 					}
 					case "dup_frames"_case:
 					{
-						callbackData->_dupFrames = stoi(string(value));
+						callbackData->_dupFrames = stoi( std::string(value));
 						break;
 					}
 					case "stream_0_0_q"_case:
 					{
-						callbackData->_stream_0_0_q = std::stod(string(value));
+						callbackData->_stream_0_0_q = std::stod( std::string(value));
 						break;
 					}
 					case "stream_1_0_q"_case:
 					{
-						callbackData->_stream_1_0_q = std::stod(string(value));
+						callbackData->_stream_1_0_q = std::stod( std::string(value));
 						break;
 					}
 					case "out_time"_case:
@@ -357,10 +358,10 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 						// usiamo out_time_ms already in millisecs
 						/*
 						// formato: HH:MM:SS.xxx
-						int h = std::stoi(string(value.substr(0, 2)));
-						int m = std::stoi(string(value.substr(3, 2)));
-						int s = std::stoi(string(value.substr(6, 2)));
-						int ms = std::stoi(string(value.substr(9)));
+						int h = std::stoi( std::string(value.substr(0, 2)));
+						int m = std::stoi( std::string(value.substr(3, 2)));
+						int s = std::stoi( std::string(value.substr(6, 2)));
+						int ms = std::stoi( std::string(value.substr(9)));
 						_encoding->_progress.out_time = std::chrono::milliseconds(
 							(static_cast<int64_t>(h) * 3600000LL) +
 							(static_cast<int64_t>(m) * 60000LL) +
@@ -373,7 +374,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					{
 						if (value != "N/A")
 						{
-							callbackData->_processedOutputTimestampMilliSecs = chrono::milliseconds(stoul(string(value)) / 1000);
+							callbackData->_processedOutputTimestampMilliSecs = std::chrono::milliseconds(stoul( std::string(value)) / 1000);
 							realBitRateChanged = true;
 						}
 						break;
@@ -386,10 +387,10 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 
 						/*
 						// formato: HH:MM:SS.xxx
-						int h = std::stoi(string(value.substr(0, 2)));
-						int m = std::stoi(string(value.substr(3, 2)));
-						int s = std::stoi(string(value.substr(6, 2)));
-						int ms = std::stoi(string(value.substr(9)));
+						int h = std::stoi( std::string(value.substr(0, 2)));
+						int m = std::stoi( std::string(value.substr(3, 2)));
+						int s = std::stoi( std::string(value.substr(6, 2)));
+						int ms = std::stoi( std::string(value.substr(9)));
 						_encoding->_progress.out_time = std::chrono::milliseconds(
 							(static_cast<int64_t>(h) * 3600000LL) +
 							(static_cast<int64_t>(m) * 60000LL) +
@@ -402,7 +403,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					{
 						if (value != "N/A")
 						{
-							callbackData->_processedSizeKBps = stoul(string(value));
+							callbackData->_processedSizeKBps = stoul( std::string(value));
 							realBitRateChanged = true;
 						}
 						break;
@@ -425,7 +426,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 					}
 					default:
 					{
-						string cleanffmpegLine;
+						 std::string cleanffmpegLine;
 						{
 							cleanffmpegLine.reserve(ffmpegLine.size());
 							for (char c : ffmpegLine) {
@@ -440,7 +441,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 
 						if (callbackData->_ffmpegOutputLogFile)
 						{
-							const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
+							const  std::string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
 							callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 							callbackData->_ffmpegOutputLogFile.write(cleanffmpegLine.data(), cleanffmpegLine.size());
 							callbackData->_ffmpegOutputLogFile.write("\n", 1);
@@ -495,7 +496,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 
 				if (callbackData->_ffmpegOutputLogFile)
 				{
-					const string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
+					const  std::string dateInfo = std::format("[{}] ", Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true));
 					callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
 					callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
 					callbackData->_ffmpegOutputLogFile.write("\n", 1);
@@ -504,7 +505,7 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 			}
 		}
 	}
-	catch (exception& e)
+	catch (std::exception& e)
 	{
 		SPDLOG_ERROR(
 			"ffmpegLineCallback, exception"
@@ -516,9 +517,9 @@ void FFMpegEngine::ffmpegLineCallback(const string_view& ffmpegLine)
 	}
 }
 
-string FFMpegEngine::Output::toSingleLine() const
+ std::string FFMpegEngine::Output::toSingleLine() const
 {
-	vector<string> args;
+	 std::vector< std::string> args;
 	buildArgs(args);
 
 	return FFMpegEngine::toSingleLine(args);
@@ -526,22 +527,22 @@ string FFMpegEngine::Output::toSingleLine() const
 
 // ---------------- builder methods ----------------
 
-FFMpegEngine& FFMpegEngine::addGlobalArg(const string_view& arg) {
-	string_view trimmed = StringUtils::trim(arg);
+FFMpegEngine& FFMpegEngine::addGlobalArg(const  std::string_view& arg) {
+	 std::string_view trimmed = StringUtils::trim(arg);
 	if (!trimmed.empty())
 	    _globalArgs.emplace_back(trimmed);
     return *this;
 }
 
-FFMpegEngine& FFMpegEngine::addGlobalArgs(const string& parameters)
+FFMpegEngine& FFMpegEngine::addGlobalArgs(const  std::string& parameters)
 {
 	for (auto&& tok :
-		parameters | views::split(' ') | views::filter([](auto &&rng){ return !ranges::empty(rng); }))
+		parameters | std::views::split(' ') | std::views::filter([](auto &&rng){ return !std::ranges::empty(rng); }))
 		_globalArgs.emplace_back(tok.begin(), tok.end());
     return *this;
 }
 
-FFMpegEngine::Input& FFMpegEngine::addInput(const string_view source) {
+FFMpegEngine::Input& FFMpegEngine::addInput(const  std::string_view source) {
 	_inputs.emplace_back(source);
 	return _inputs.back();
 }
@@ -551,7 +552,7 @@ FFMpegEngine::Input& FFMpegEngine::addInput() {
     return _inputs.back();
 }
 
-FFMpegEngine::Output& FFMpegEngine::addOutput(const string_view path) {
+FFMpegEngine::Output& FFMpegEngine::addOutput(const  std::string_view path) {
 	_outputs.emplace_back(path);
 	return _outputs.back();
 }
@@ -561,30 +562,30 @@ FFMpegEngine::Output& FFMpegEngine::addOutput() {
     return _outputs.back();
 }
 
-FFMpegEngine& FFMpegEngine::addFilterComplex(const string_view& fc) {
+FFMpegEngine& FFMpegEngine::addFilterComplex(const  std::string_view& fc) {
 	if (!StringUtils::trim(fc).empty())
 	    _filterComplex.emplace_back(StringUtils::trim(fc));
     return *this;
 }
 
-FFMpegEngine::Input& FFMpegEngine::addSrtInput(const string_view& target, optional<int> latencyMilliSeconds) {
+FFMpegEngine::Input& FFMpegEngine::addSrtInput(const  std::string_view& target,  std::optional<int> latencyMilliSeconds) {
     auto& in = addInput(std::format("srt://{}", target));
     if (latencyMilliSeconds)
-    	in.addArg(string("-timeout ") + to_string(*latencyMilliSeconds));
+    	in.addArg( std::string("-timeout ") + std::to_string(*latencyMilliSeconds));
     return in;
 }
 
-FFMpegEngine::Input& FFMpegEngine::addUdpInput(const string_view& target, optional<int> listenTimeoutMilliSeconds) {
+FFMpegEngine::Input& FFMpegEngine::addUdpInput(const  std::string_view& target,  std::optional<int> listenTimeoutMilliSeconds) {
 	if (listenTimeoutMilliSeconds)
 		return addInput(std::format("udp://{}?timeout=", target, *listenTimeoutMilliSeconds * 1000));
 	return addInput(std::format("udp://{}", target));
 }
 
-FFMpegEngine::Input& FFMpegEngine::addRtmpInput(const string_view& target) {
+FFMpegEngine::Input& FFMpegEngine::addRtmpInput(const  std::string_view& target) {
     return addInput(std::format("rtmp://{}", target));
 }
 
-FFMpegEngine::Input& FFMpegEngine::addPipeInput(const string_view& spec) {
+FFMpegEngine::Input& FFMpegEngine::addPipeInput(const  std::string_view& spec) {
     return addInput(spec);
 }
 
@@ -593,9 +594,9 @@ FFMpegEngine& FFMpegEngine::enableNvenc() {
     return *this;
 }
 
-FFMpegEngine& FFMpegEngine::enableVaapi(const string_view& device) {
+FFMpegEngine& FFMpegEngine::enableVaapi(const  std::string_view& device) {
     _hwAccel = "vaapi";
-    _vaapiDevice = string(device);
+    _vaapiDevice =  std::string(device);
     return *this;
 }
 
@@ -615,8 +616,8 @@ FFMpegEngine& FFMpegEngine::vaapiPrepareUpload() {
     return *this;
 }
 
-FFMpegEngine& FFMpegEngine::addWatermark(Output& out, string_view overlayLabel, string_view pos) {
-    out.addVideoFilter(string(overlayLabel) + " overlay=" + string(pos));
+FFMpegEngine& FFMpegEngine::addWatermark(Output& out,  std::string_view overlayLabel,  std::string_view pos) {
+    out.addVideoFilter( std::string(overlayLabel) + " overlay=" +  std::string(pos));
     return *this;
 }
 
@@ -626,9 +627,9 @@ void FFMpegEngine::setDurationMilliSeconds(const int64_t durationMilliSeconds) {
 
 // ---------------- build args (vector) ----------------
 
-string FFMpegEngine::toSingleLine(vector<string>& args)
+ std::string FFMpegEngine::toSingleLine( std::vector< std::string>& args)
 {
-	ostringstream ffmpegArgumentListStream;
+	std::ostringstream ffmpegArgumentListStream;
 
 	// if (!ffmpegArgumentList.empty())
 	// 	copy(ffmpegArgumentList.begin(), ffmpegArgumentList.end(), ostream_iterator<string>(ffmpegArgumentListStream, " "));
@@ -638,7 +639,7 @@ string FFMpegEngine::toSingleLine(vector<string>& args)
 		if (index)
 			ffmpegArgumentListStream << " ";
 		// simple quoting for visualization
-		if (args[index].find(' ') != string::npos)
+		if (args[index].find(' ') !=  std::string::npos)
 			ffmpegArgumentListStream << "\"" << args[index] << "\"";
 		else
 			ffmpegArgumentListStream << args[index];
@@ -647,9 +648,9 @@ string FFMpegEngine::toSingleLine(vector<string>& args)
 	return ffmpegArgumentListStream.str();
 }
 
-vector<string> FFMpegEngine::buildArgs(bool useProgressPipe) const
+ std::vector< std::string> FFMpegEngine::buildArgs(bool useProgressPipe) const
 {
-    vector<string> args;
+     std::vector< std::string> args;
 
 	args.emplace_back("ffmpeg");
 
@@ -664,7 +665,7 @@ vector<string> FFMpegEngine::buildArgs(bool useProgressPipe) const
     {
         args.emplace_back("-filter_complex");
         // join
-        string fc;
+         std::string fc;
         for (size_t i = 0; i < _filterComplex.size(); ++i)
         {
             fc += _filterComplex[i];
@@ -688,7 +689,7 @@ vector<string> FFMpegEngine::buildArgs(bool useProgressPipe) const
     return args;
 }
 
-string FFMpegEngine::build(bool useProgressPipe) const
+ std::string FFMpegEngine::build(bool useProgressPipe) const
 {
     auto args = buildArgs(useProgressPipe);
 
@@ -697,7 +698,7 @@ string FFMpegEngine::build(bool useProgressPipe) const
 
 // ----------------- formatter per mostrare i comandi -----------------
 
-string FFMpegEngine::toPrettyString(const int indentSpaces) const {
+ std::string FFMpegEngine::toPrettyString(const int indentSpaces) const {
 	std::ostringstream oss;
 	const std::string indent(indentSpaces, ' ');
 
@@ -747,8 +748,8 @@ void FFMpegEngine::reset()
 	_outputs.clear();
 	_filterComplex.clear();
 	_globalArgs.clear();
-	_hwAccel = nullopt;
-	_vaapiDevice = nullopt;
-	_durationMilliSeconds = nullopt;
+	_hwAccel =  std::nullopt;
+	_vaapiDevice =  std::nullopt;
+	_durationMilliSeconds =  std::nullopt;
 	_internalCallbackData->reset();
 }
