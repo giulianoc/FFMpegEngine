@@ -269,7 +269,8 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 						callbackData->_ffmpegOutputLogFile.flush();
 					}
 				}
-				else if (ffmpegLineLower.find("signal") != std::string::npos)
+				else if (ffmpegLineLower.find("signal") != std::string::npos
+					&& ffmpegLineLower.find("timefromsignal") == std::string::npos)
 				{
 					if (ffmpegLineLower.find("signal 3") !=  std::string::npos // SIGQUIT
 						|| ffmpegLineLower.find("signal: 3") !=  std::string::npos)
