@@ -132,7 +132,7 @@ void FFMpegEngine::run(const  std::string& ffmpegPath, ProcessUtility::ProcessId
 	{
 		if (clientCallbackData)
 		{
-			SPDLOG_INFO("run (client callback)"
+			LOG_INFO("run (client callback)"
 				", ffmpegPath: {}"
 				"{}"
 				", outputFfmpegPathFileName: {}"
@@ -148,7 +148,7 @@ void FFMpegEngine::run(const  std::string& ffmpegPath, ProcessUtility::ProcessId
 		}
 		else
 		{
-			SPDLOG_INFO("run (internal callback)"
+			LOG_INFO("run (internal callback)"
 				", ffmpegPath: {}"
 				"{}"
 				", outputFfmpegPathFileName: {}"
@@ -170,7 +170,7 @@ void FFMpegEngine::run(const  std::string& ffmpegPath, ProcessUtility::ProcessId
 	}
 	catch (std::exception& e)
 	{
-		SPDLOG_ERROR("run failed"
+		LOG_ERROR("run failed"
 			", exception: {}", e.what()
 			);
 		throw;
@@ -209,7 +209,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 							", ffmpegOutputLogPathFileName: {}",
 							_referenceToLog, callbackData->_outputFfmpegPathFileName
 						);
-						SPDLOG_ERROR(errorMessage);
+						LOG_ERROR(errorMessage);
 						callbackData->pushErrorMessage(std::format("{} {}",
 							Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true), errorMessage));
 					}
@@ -235,7 +235,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 				{
 					callbackData->pushErrorMessage(std::format("{} {}: {}",
 						Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true), pattern, ffmpegLine));
-					SPDLOG_ERROR("ffmpegLineCallback, {} detected"
+					LOG_ERROR("ffmpegLineCallback, {} detected"
 						"{}"
 						", ffmpegLine: {}", pattern, _referenceToLog, ffmpegLine);
 					error = true;
@@ -256,7 +256,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 				{
 					callbackData->pushErrorMessage(std::format("{} error: {}",
 						Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true), ffmpegLine));
-					SPDLOG_ERROR("ffmpegLineCallback, error detected"
+					LOG_ERROR("ffmpegLineCallback, error detected"
 						"{}"
 						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
 					error = true;
@@ -281,7 +281,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 
 					callbackData->pushErrorMessage(std::format("{} signal: {}",
 						Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S", true), ffmpegLine));
-					SPDLOG_ERROR("ffmpegLineCallback, signal detected"
+					LOG_ERROR("ffmpegLineCallback, signal detected"
 						"{}"
 						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
 					error = true;
@@ -436,7 +436,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 							}
 						}
 
-						SPDLOG_WARN("ffmpegLineCallback, line not managed"
+						LOG_WARN("ffmpegLineCallback, line not managed"
 							"{}"
 							", cleanffmpegLine (without \\r): {}", _referenceToLog, cleanffmpegLine);
 
@@ -475,7 +475,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 					if (*callbackData->_progressPercent > 100.0)
 						callbackData->_progressPercent = 100.0;
 				}
-				SPDLOG_TRACE("ffmpegLineCallback, progressPercent"
+				LOG_TRACE("ffmpegLineCallback, progressPercent"
 					"{}"
 					", processedOutputTimestampMilliSecs: {}"
 					", durationMilliSeconds: {}"
@@ -488,10 +488,10 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 			else
 			{
 				if (ffmpegLine.empty())
-					SPDLOG_INFO("ffmpegLineCallback, line is empty"
+					LOG_INFO("ffmpegLineCallback, line is empty"
 						"{}", _referenceToLog);
 				else
-					SPDLOG_WARN("ffmpegLineCallback, line not managed"
+					LOG_WARN("ffmpegLineCallback, line not managed"
 						"{}"
 						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
 
@@ -508,7 +508,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 	}
 	catch (std::exception& e)
 	{
-		SPDLOG_ERROR(
+		LOG_ERROR(
 			"ffmpegLineCallback, exception"
 			"{}"
 			", ffmpegLine: {}"

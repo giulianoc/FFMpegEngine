@@ -30,6 +30,7 @@ SET (HEADERS
 
 include_directories("${NLOHMANN_INCLUDE_DIR}")
 include_directories("${SPDLOG_INCLUDE_DIR}")
+include_directories("${THREADLOGGER_INCLUDE_DIR}")
 include_directories("${STRINGUTILS_INCLUDE_DIR}")
 include_directories("${PROCESSUTILITY_INCLUDE_DIR}")
 include_directories("${DATETIME_INCLUDE_DIR}")
