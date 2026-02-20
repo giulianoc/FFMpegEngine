@@ -19,7 +19,7 @@ nbproject
 .DS_Store
 
 #ignora i seguenti eseguibili
-examples/json5/json5
+examples/ffMpegEngine/ffMpegEngine
 
 *.cgi
 *.fcgi
