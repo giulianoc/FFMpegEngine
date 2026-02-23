@@ -171,7 +171,8 @@ void FFMpegEngine::run(const  std::string& ffmpegPath, ProcessUtility::ProcessId
 	catch (std::exception& e)
 	{
 		LOG_ERROR("run failed"
-			", exception: {}", e.what()
+			"{}"
+			", exception: {}", referenceToLog, e.what()
 			);
 		throw;
 	}
