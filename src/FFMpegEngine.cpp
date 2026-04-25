@@ -648,13 +648,22 @@ void FFMpegEngine::setDurationMilliSeconds(const int64_t durationMilliSeconds) {
 		// simple quoting for visualization
 		if (args[index].find(' ') !=  std::string::npos)
 		{
-			// Nel caso in cui args[index] sia ad esempio
-			//	audio="CABLE Output (VB-Audio Virtual Cable)"
-			// le virgolette non servono altrimenti il comando darebbe un errore
-			if (args[index].find('"') != std::string::npos)
-				ffmpegArgumentListStream << args[index];
-			else
-				ffmpegArgumentListStream << "\"" << args[index] << "\"";
+			std::string tmp = args[index];
+			if (tmp.find('"') != std::string::npos)
+			{
+				// Nel caso in cui args[index] sia ad esempio
+				//	audio="CABLE Output (VB-Audio Virtual Cable)"
+				// bisogna eliminare le virgolette perchè si aggiungono dopo
+				//	audio=CABLE Output (VB-Audio Virtual Cable)
+
+				// std::ranges::remove sposta tutti i " in fondo alla stringa e
+				//	ritorna un td::ranges::subrange che costituisce la parte finale contenente i caratteri "
+				//	Es. se la stringa iniziale è: a"b"c, viene eseguito abc?? e il subrange è ?? (la stringa ha ancora dimensione 5)
+				// tmp.erase cancella fisicamente quel range e riduce la lunghezza della stringa.
+				tmp.erase(std::ranges::remove(tmp, '"').begin(), tmp.end());
+			}
+
+			ffmpegArgumentListStream << "\"" << tmp << "\"";
 		}
 		else
 			ffmpegArgumentListStream << args[index];
