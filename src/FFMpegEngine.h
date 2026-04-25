@@ -374,8 +374,13 @@ public:
 		int32_t _durationSeconds = -1;
     public:
     	Input() = default;
-    	explicit Input(const std::string_view& source) : _source(source) {}
-		Input& setSource(const std::string_view& source) { _source = source; return *this; }
+    	explicit Input(const std::string_view& source)
+    	{
+    		std::string tmp(source);
+    		tmp.erase(std::ranges::remove(tmp, '"').begin(), tmp.end());
+    		_source = tmp;
+    	}
+		Input& setSource(const std::string_view& source) { std::string tmp(source); tmp.erase(std::ranges::remove(tmp, '"').begin(), tmp.end()); _source = tmp; return *this; }
 		Input& setDurationSeconds(const int32_t durationSeconds) { _durationSeconds = durationSeconds; return *this; }
 		Input& addArg(const std::string_view& parameter);
     	Input& addArgs(const std::string& parameters);
