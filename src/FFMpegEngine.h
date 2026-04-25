@@ -376,11 +376,21 @@ public:
     	Input() = default;
     	explicit Input(const std::string_view& source)
     	{
-    		std::string tmp(source);
-    		tmp.erase(std::ranges::remove(tmp, '"').begin(), tmp.end());
-    		_source = tmp;
+    		// se source è audio="CABLE Output (VB-Audio Virtual Cable)", dobbiamo rimuovere le virgolette per evitare problemi a ffmpeg
+    		_source.clear();
+    		_source.reserve(source.size());
+    		std::ranges::copy_if(source, std::back_inserter(_source),
+			[](char c){ return c != '"'; });
     	}
-		Input& setSource(const std::string_view& source) { std::string tmp(source); tmp.erase(std::ranges::remove(tmp, '"').begin(), tmp.end()); _source = tmp; return *this; }
+		Input& setSource(const std::string_view& source)
+    	{
+    		// se source è audio="CABLE Output (VB-Audio Virtual Cable)", dobbiamo rimuovere le virgolette per evitare problemi a ffmpeg
+    		_source.clear();
+    		_source.reserve(source.size());
+    		std::ranges::copy_if(source, std::back_inserter(_source),
+    		[](char c){ return c != '"'; });
+    		return *this;
+    	}
 		Input& setDurationSeconds(const int32_t durationSeconds) { _durationSeconds = durationSeconds; return *this; }
 		Input& addArg(const std::string_view& parameter);
     	Input& addArgs(const std::string& parameters);
