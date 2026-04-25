@@ -647,7 +647,15 @@ void FFMpegEngine::setDurationMilliSeconds(const int64_t durationMilliSeconds) {
 			ffmpegArgumentListStream << " ";
 		// simple quoting for visualization
 		if (args[index].find(' ') !=  std::string::npos)
-			ffmpegArgumentListStream << "\"" << args[index] << "\"";
+		{
+			// Nel caso in cui args[index] sia ad esempio
+			//	audio="CABLE Output (VB-Audio Virtual Cable)"
+			// le virgolette non servono altrimenti il comando darebbe un errore
+			if (args[index].find('"') != std::string::npos)
+				ffmpegArgumentListStream << args[index];
+			else
+				ffmpegArgumentListStream << "\"" << args[index] << "\"";
+		}
 		else
 			ffmpegArgumentListStream << args[index];
 	}
@@ -715,7 +723,7 @@ void FFMpegEngine::setDurationMilliSeconds(const int64_t durationMilliSeconds) {
 		std::string line;
 		for (auto &opt : inp._args)
 			line += opt + " ";
-		line += "-i " + inp._source;
+		line += std::format("-i {}", inp._source);
 		oss << indent << line << "\n";
 	}
 	oss << "\n";
