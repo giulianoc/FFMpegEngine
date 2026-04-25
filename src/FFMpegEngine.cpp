@@ -660,7 +660,8 @@ void FFMpegEngine::setDurationMilliSeconds(const int64_t durationMilliSeconds) {
 				//	ritorna un td::ranges::subrange che costituisce la parte finale contenente i caratteri "
 				//	Es. se la stringa iniziale è: a"b"c, viene eseguito abc?? e il subrange è ?? (la stringa ha ancora dimensione 5)
 				// tmp.erase cancella fisicamente quel range e riduce la lunghezza della stringa.
-				tmp.erase(std::ranges::remove(tmp, '"').begin(), tmp.end());
+				// tmp.erase(std::ranges::remove(tmp, '"').begin(), tmp.end());
+				tmp = StringUtils::replaceAll(tmp, "\"", "\\\"");
 			}
 
 			ffmpegArgumentListStream << "\"" << tmp << "\"";
