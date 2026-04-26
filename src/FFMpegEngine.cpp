@@ -50,7 +50,7 @@ FFMpegEngine::Input& FFMpegEngine::Input::addArgs(const  std::string& parameters
 		if (c == '"')
 		{
 			in_quotes = !in_quotes;		// entra/esce dalle virgolette
-			token.push_back(c);			// viene mantenuto "
+			// token.push_back(c);			// viene mantenuto "
 			continue;
 		}
 
@@ -127,7 +127,7 @@ FFMpegEngine::Output& FFMpegEngine::Output::addArgs(const  std::string& paramete
 		if (c == '"')
 		{
 			in_quotes = !in_quotes;		// entra/esce dalle virgolette
-			token.push_back(c);			// viene mantenuto "
+			// token.push_back(c);			// viene mantenuto "
 			continue;
 		}
 
