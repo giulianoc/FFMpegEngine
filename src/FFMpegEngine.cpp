@@ -23,9 +23,46 @@ FFMpegEngine::Input& FFMpegEngine::Input::addArg(const  std::string_view& parame
 
 FFMpegEngine::Input& FFMpegEngine::Input::addArgs(const  std::string& parameters)
 {
+/*
 	for (auto&& tok :
 		parameters | std::views::split(' ') | std::views::filter([](auto &&rng){ return !std::ranges::empty(rng); }))
 		_args.emplace_back(tok.begin(), tok.end());
+	return *this;
+*/
+	// - inserisce in _args considerando lo spazio come separatore
+	// - lo spazio all'interno di virgolette non deve essere considerato come separatore
+	//	nel caso ad es. di title="aa bb cc" in _args si deve inserire un solo item
+	std::string token;
+	token.reserve(parameters.size());
+
+	bool in_quotes = false;
+
+	// aggiunge in _args se item è non vuoto
+	auto flush = [&]() {
+		if (!token.empty()) {
+			_args.emplace_back(std::move(token));
+			token.clear();
+		}
+	};
+
+	for (const char c : parameters)
+	{
+		if (c == '"')
+		{
+			in_quotes = !in_quotes;		// entra/esce dalle virgolette
+			token.push_back(c);			// viene mantenuto "
+			continue;
+		}
+
+		if (!in_quotes && std::isspace(static_cast<unsigned char>(c))) {
+			flush();                  // fine token
+			continue;
+		}
+
+		token.push_back(c);
+	}
+
+	flush();
 	return *this;
 }
 
@@ -63,9 +100,46 @@ FFMpegEngine::Output& FFMpegEngine::Output::addArg(const  std::string_view& para
 
 FFMpegEngine::Output& FFMpegEngine::Output::addArgs(const  std::string& parameters)
 {
+	/*
 	for (auto&& tok :
 		parameters | std::views::split(' ') | std::views::filter([](auto &&rng){ return !std::ranges::empty(rng); }))
 		_extraArgs.emplace_back(tok.begin(), tok.end());
+	return *this;
+	*/
+	// - inserisce in _args considerando lo spazio come separatore
+	// - lo spazio all'interno di virgolette non deve essere considerato come separatore
+	//	nel caso ad es. di title="aa bb cc" in _args si deve inserire un solo item
+	std::string token;
+	token.reserve(parameters.size());
+
+	bool in_quotes = false;
+
+	// aggiunge in _args se item è non vuoto
+	auto flush = [&]() {
+		if (!token.empty()) {
+			_extraArgs.emplace_back(std::move(token));
+			token.clear();
+		}
+	};
+
+	for (const char c : parameters)
+	{
+		if (c == '"')
+		{
+			in_quotes = !in_quotes;		// entra/esce dalle virgolette
+			token.push_back(c);			// viene mantenuto "
+			continue;
+		}
+
+		if (!in_quotes && std::isspace(static_cast<unsigned char>(c))) {
+			flush();                  // fine token
+			continue;
+		}
+
+		token.push_back(c);
+	}
+
+	flush();
 	return *this;
 }
 
