@@ -320,7 +320,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 				{
 					case "frame"_case:
 					{
-						callbackData->_processedFrames = stoi( std::string(value));
+						callbackData->_processedFrames = StringUtils::getValue<int32_t>( std::string(value));
 						break;
 					}
 					case "fps"_case:
@@ -340,12 +340,12 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 					}
 					case "drop_frames"_case:
 					{
-						callbackData->_dropFrames = stoi( std::string(value));
+						callbackData->_dropFrames = StringUtils::getValue<int32_t>( std::string(value));
 						break;
 					}
 					case "dup_frames"_case:
 					{
-						callbackData->_dupFrames = stoi( std::string(value));
+						callbackData->_dupFrames = StringUtils::getValue<int32_t>( std::string(value));
 						break;
 					}
 					case "stream_0_0_q"_case:
@@ -379,7 +379,8 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 					{
 						if (value != "N/A")
 						{
-							callbackData->_processedOutputTimestampMilliSecs = std::chrono::milliseconds(stoul( std::string(value)) / 1000);
+							callbackData->_processedOutputTimestampMilliSecs = std::chrono::milliseconds(
+								StringUtils::getValue<long long>(std::string(value)) / 1000);
 							realBitRateChanged = true;
 						}
 						break;
@@ -408,7 +409,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 					{
 						if (value != "N/A")
 						{
-							callbackData->_processedSizeKBps = stoul( std::string(value));
+							callbackData->_processedSizeKBps = StringUtils::getValue<size_t>(std::string(value));
 							realBitRateChanged = true;
 						}
 						break;
