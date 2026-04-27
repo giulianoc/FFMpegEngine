@@ -23,12 +23,11 @@ FFMpegEngine::Input& FFMpegEngine::Input::addArg(const  std::string_view& parame
 
 FFMpegEngine::Input& FFMpegEngine::Input::addArgs(const  std::string& parameters)
 {
-/*
 	for (auto&& tok :
 		parameters | std::views::split(' ') | std::views::filter([](auto &&rng){ return !std::ranges::empty(rng); }))
 		_args.emplace_back(tok.begin(), tok.end());
 	return *this;
-*/
+/*
 	// - inserisce in _args considerando lo spazio come separatore
 	// - lo spazio all'interno di virgolette non deve essere considerato come separatore
 	//	nel caso ad es. di title="aa bb cc" in _args si deve inserire un solo item
@@ -64,6 +63,7 @@ FFMpegEngine::Input& FFMpegEngine::Input::addArgs(const  std::string& parameters
 
 	flush();
 	return *this;
+*/
 }
 
 void FFMpegEngine::Input::buildArgs( std::vector< std::string>& args) const
@@ -100,12 +100,11 @@ FFMpegEngine::Output& FFMpegEngine::Output::addArg(const  std::string_view& para
 
 FFMpegEngine::Output& FFMpegEngine::Output::addArgs(const  std::string& parameters)
 {
-	/*
 	for (auto&& tok :
 		parameters | std::views::split(' ') | std::views::filter([](auto &&rng){ return !std::ranges::empty(rng); }))
 		_extraArgs.emplace_back(tok.begin(), tok.end());
 	return *this;
-	*/
+	/*
 	// - inserisce in _args considerando lo spazio come separatore
 	// - lo spazio all'interno di virgolette non deve essere considerato come separatore
 	//	nel caso ad es. di title="aa bb cc" in _args si deve inserire un solo item
@@ -141,6 +140,7 @@ FFMpegEngine::Output& FFMpegEngine::Output::addArgs(const  std::string& paramete
 
 	flush();
 	return *this;
+	*/
 }
 
 void FFMpegEngine::Output::buildArgs( std::vector< std::string>& args) const
