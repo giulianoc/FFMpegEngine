@@ -261,6 +261,12 @@ public:
 			return _framePerSeconds;
 		}
 
+		double getSpeed()
+		{
+			std::shared_lock locker(_callbackDataMutex);
+			return _speed;
+		}
+
 		size_t getProcessedSizeKBps()
 		{
 			std::shared_lock locker(_callbackDataMutex);
