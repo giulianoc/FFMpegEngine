@@ -56,6 +56,7 @@ public:
 			clonedData->_segmentFailedTooManyTimes = _segmentFailedTooManyTimes;
 			clonedData->_timestampDiscontinuityCount = _timestampDiscontinuityCount;
 			clonedData->_discontinuities = _discontinuities;
+			clonedData->_ioEndOfFile = _ioEndOfFile;
 
 			clonedData->_signal = _signal;
 
@@ -116,6 +117,18 @@ public:
 						_discontinuities.pop_front();
 				}
 			}
+			// [tls @ 0x736e483b7e40] IO error: End of file
+			// Scenario:
+			// La connessione TLS verso il sorgente è caduta (es. URL firmati che scadono).
+			// Il reconnect automatico di ffmpeg non rinegozia il token → restart necessario.
+			// Restart se ≥ N occorrenze in M secondi (default: 3 in 10s).
+			if (lowerErrorMessage.find("io error: end of file") != std::string::npos)
+			{
+				const auto now = std::chrono::steady_clock::now();
+				_ioEndOfFile.push_back(now);
+				while (!_ioEndOfFile.empty() && now - _ioEndOfFile.front() > _ioEndOfFileTimeWindow)
+					_ioEndOfFile.pop_front();
+			}
 		}
 
 		void reset()
@@ -149,6 +162,7 @@ public:
 			_segmentFailedTooManyTimes = false;
 			_timestampDiscontinuityCount = 0;
 			_discontinuities.clear();
+			_ioEndOfFile.clear();
 
 			_signal = std::nullopt;
 
@@ -182,6 +196,7 @@ public:
 			root["nonMonotonousDts"] = _nonMonotonousDts;
 			root["timestampDiscontinuityCount"] = _timestampDiscontinuityCount;
 			root[std::format("timestampDiscontinuityCount in {} seconds", _timestampDiscontinuitiTimeWindow)] = _discontinuities.size();
+			root[std::format("ioEndOfFileCount in {} seconds", _ioEndOfFileTimeWindow)] = _ioEndOfFile.size();
 			root["signal"] = this->_signal ? *this->_signal : -1;
 			root["finished"] = *_finished;
 			if (_startTime && _endTime)
@@ -298,6 +313,12 @@ public:
 			return _discontinuities.size();
 		}
 
+		size_t getIoEndOfFileCountInTimeWindow()
+		{
+			std::shared_lock locker(_callbackDataMutex);
+			return _ioEndOfFile.size();
+		}
+
 		double getBitRateKbps()
 		{
 			std::shared_lock locker(_callbackDataMutex);
@@ -361,6 +382,9 @@ public:
 		// discontinuities: serve per capire se ≥ N volte in M secondi
 		static constexpr auto _timestampDiscontinuitiTimeWindow = std::chrono::seconds(30);
 		std::deque<std::chrono::steady_clock::time_point> _discontinuities; // steady_clock → immune a cambi ora / NTP
+
+		static constexpr auto _ioEndOfFileTimeWindow = std::chrono::seconds(10);
+		std::deque<std::chrono::steady_clock::time_point> _ioEndOfFile;
 
 		std::optional<int32_t> _signal{};
 
