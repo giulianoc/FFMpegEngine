@@ -417,8 +417,7 @@ public:
     		// se source è audio="CABLE Output (VB-Audio Virtual Cable)", dobbiamo rimuovere le virgolette per evitare problemi a ffmpeg
     		_source.clear();
     		_source.reserve(source.size());
-    		std::ranges::copy_if(source, std::back_inserter(_source),
-    		[](char c){ return c != '"'; });
+    		std::ranges::copy_if(source, std::back_inserter(_source), [](char c){ return c != '"'; });
     		return *this;
     	}
 		Input& setDurationSeconds(const int32_t durationSeconds) { _durationSeconds = durationSeconds; return *this; }
