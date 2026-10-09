@@ -435,7 +435,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 						", eventName: blackdetect"
 						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
 				else
-					LOG_INFO("ffmpegLineCallback, filter line detected"
+					LOG_DEBUG("ffmpegLineCallback, filter line detected"
 						"{}"
 						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
 				if (callbackData->_ffmpegOutputLogFile)
@@ -453,9 +453,11 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 		// un nero in corso genera l'evento blackdetect quando raggiunge la durata minima.
 		// Il controllo viene fatto ad ogni riga ricevuta (le righe di progress arrivano ogni ~0.5 secs)
 		if (callbackData->blackDetect_checkInProgress())
-			LOG_INFO("ffmpegLineCallback, filter event generated"
+			LOG_INFO("ffmpegLineCallback, filter event generated (black in progress)"
 				"{}"
-				", eventName: blackdetect (black in progress)", _referenceToLog);
+				", eventName: blackdetect "
+				", minDurationSecs: {}",
+				_referenceToLog, callbackData->_blackDetect_minDurationSecs ? *callbackData->_blackDetect_minDurationSecs : -1.0);
 
 		if (!error && !filterLine)
 		{
