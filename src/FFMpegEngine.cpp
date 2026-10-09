@@ -79,7 +79,7 @@ void FFMpegEngine::Input::buildArgs( std::vector< std::string>& args) const
 	args.emplace_back(_source);
 }
 
- std::string FFMpegEngine::Input::toSingleLine() const
+std::string FFMpegEngine::Input::toSingleLine() const
 {
 	 std::vector< std::string> args;
 	buildArgs(args);
@@ -175,7 +175,7 @@ void FFMpegEngine::Output::buildArgs( std::vector< std::string>& args) const
 		{
 			vf += _videoFilters[index];
 			if (index + 1 < _videoFilters.size())
-				vf += ",";
+				vf += ',';
 		}
 		args.emplace_back("-vf");
 		args.emplace_back(vf);
@@ -187,7 +187,7 @@ void FFMpegEngine::Output::buildArgs( std::vector< std::string>& args) const
 		{
 			af += _audioFilters[index];
 			if (index + 1 < _audioFilters.size())
-				af += ",";
+				af += ',';
 		}
 		args.emplace_back("-af");
 		args.emplace_back(af);
@@ -237,8 +237,28 @@ void FFMpegEngine::run(const  std::string& ffmpegPath, ProcessUtility::ProcessId
 			_internalCallbackData->setOutputFfmpegPathFileName(outputFfmpegPathFileName);
 		}
 		_referenceToLog = referenceToLog;
+
+		const auto args = buildArgs(true);
+
+		// durata minima del nero per generare l'evento blackdetect (vedi FFMpegFilters::getFilter).
+		// Se ci sono più blackdetect, consideriamo la durata minore
+		{
+			std::optional<double> blackMinDurationSecs;
+			static const std::regex blackDetectRegex(R"(blackdetect=d=([0-9.]+))");
+			for (const auto& arg : args)
+			{
+				for (auto it = std::sregex_iterator(arg.begin(), arg.end(), blackDetectRegex); it != std::sregex_iterator(); ++it)
+				{
+					const double d = std::stod((*it)[1].str());
+					if (!blackMinDurationSecs || d < *blackMinDurationSecs)
+						blackMinDurationSecs = d;
+				}
+			}
+			(_clientCallbackData ? _clientCallbackData : _internalCallbackData)->setBlackMinDurationSecs(blackMinDurationSecs);
+		}
+
 		ProcessUtility::forkAndExecByCallback(
-			std::format("{}/ffmpeg", ffmpegPath), buildArgs(true),
+			std::format("{}/ffmpeg", ffmpegPath), args,
 			[&](const  std::string_view& line) {ffmpegLineCallback(line); },
 			true, true, processId, iReturnedStatus);
 	}
@@ -375,10 +395,71 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 			}
 		}
 
-		if (!error)
+		// detect filter lines
+		// Righe generate da blackdetect e dai filtri metadata aggiunti dopo blackdetect (vedi FFMpegFilters::getFilter):
+		bool filterLine = false;
+		if (!error && ffmpegLine.starts_with('[') && ffmpegLine.find(" @ ") != std::string_view::npos)
 		{
-			auto pos = ffmpegLine.find('=');
-			if (pos !=  std::string_view::npos)
+			bool eventGenerated = false;
+			if (ffmpegLine.find("lavfi.black_start=") != std::string_view::npos)
+			{
+				// primo frame nero e un nero non era già in corso. La durata minima d qui non conta
+				callbackData->blackDetect_started();
+				filterLine = true;
+			}
+			else if (ffmpegLine.find("lavfi.black_end=") != std::string_view::npos)
+			{
+				// primo frame non nero dopo un nero. La durata minima d qui non conta
+				callbackData->blackDetect_ended();
+				filterLine = true;
+			}
+			else if (ffmpegLine.find("black_duration:") != std::string_view::npos)
+			{
+				// il nero finisce, solo se black_duration >= d. L'evento potrebbe essere già stato generato da checkBlackInProgress
+				// se NOW - startblack e molto piu grande di d
+				eventGenerated = callbackData->blackDetect_durationReached();
+				filterLine = true;
+			}
+			else if (ffmpegLine.starts_with("[Parsed_metadata_") && ffmpegLine.find(" pts_time:") != std::string_view::npos)
+			{
+				// generato dal filtro metadata per ogni frame che contiene la chiave cercata (lavfi.black_start o lavfi.black_end).
+				// Compare sia prima di lavfi.black_start (da Parsed_metadata_1) sia prima di lavfi.black_end (da Parsed_metadata_2)
+				filterLine = true;
+			}
+
+			if (filterLine)
+			{
+				if (eventGenerated)
+					LOG_INFO("ffmpegLineCallback, filter event generated"
+						"{}"
+						", eventName: blackdetect"
+						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
+				else
+					LOG_INFO("ffmpegLineCallback, filter line detected"
+						"{}"
+						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
+				if (callbackData->_ffmpegOutputLogFile)
+				{
+					const  std::string dateInfo = std::format("[{}] ",
+						Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true));
+					callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
+					callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
+					callbackData->_ffmpegOutputLogFile.write("\n", 1);
+					callbackData->_ffmpegOutputLogFile.flush();
+				}
+			}
+		}
+
+		// un nero in corso genera l'evento blackdetect quando raggiunge la durata minima.
+		// Il controllo viene fatto ad ogni riga ricevuta (le righe di progress arrivano ogni ~0.5 secs)
+		if (callbackData->blackDetect_checkInProgress())
+			LOG_INFO("ffmpegLineCallback, filter event generated"
+				"{}"
+				", eventName: blackdetect (black in progress)", _referenceToLog);
+
+		if (!error && !filterLine)
+		{
+			if (auto pos = ffmpegLine.find('='); pos !=  std::string_view::npos)
 			{
 				 std::string_view key = StringUtils::trim(ffmpegLine.substr(0, pos));
 				 std::string_view value = StringUtils::trim(ffmpegLine.substr(pos + 1));
@@ -752,7 +833,7 @@ void FFMpegEngine::setDurationMilliSeconds(const int64_t durationMilliSeconds) {
         {
             fc += _filterComplex[i];
             if (i + 1 < _filterComplex.size())
-            	fc += ";";
+            	fc += ';';
         }
         args.emplace_back(fc);
     }

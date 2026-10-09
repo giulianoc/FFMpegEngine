@@ -21,13 +21,16 @@
 # with the authors.
 
 SET (SOURCES
+	FFMpegFilters.cpp
 	FFMpegEngine.cpp
 )
 
 SET (HEADERS
+	FFMpegFilters.h
 	FFMpegEngine.h
 )
 
+include_directories("${JSONUTILS_INCLUDE_DIR}")
 include_directories("${NLOHMANN_INCLUDE_DIR}")
 include_directories("${SPDLOG_INCLUDE_DIR}")
 include_directories("${THREADLOGGER_INCLUDE_DIR}")

@@ -1,17 +1,20 @@
 
 #pragma once
 
+#include "Datetime.h"
 #include "StringUtils.h"
 #include "ProcessUtility.h"
 
 #include <optional>
 #include <queue>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <vector>
 #include <fstream>
 #include <regex>
 #include <shared_mutex>
+#include <unordered_map>
 
 #include "nlohmann/json.hpp"
 
@@ -21,6 +24,14 @@ private:
 public:
 	class CallbackData {
 	public:
+		// evento segnalato da un filtro ffmpeg (es. blackdetect)
+		struct FilterEvent
+		{
+			std::string _name;	// nome del filtro che ha generato l'evento (es. "blackdetect")
+			uint32_t _count{};	// numero di eventi dello stesso tipo ricevuti dall'ultimo pop
+			std::chrono::system_clock::time_point _firstReceivedTime{}; // momento in cui è stato ricevuto il primo evento
+		};
+
 		CallbackData() = default;
 
 		std::shared_ptr<CallbackData> clone()
@@ -59,6 +70,11 @@ public:
 			clonedData->_ioEndOfFile = _ioEndOfFile;
 
 			clonedData->_signal = _signal;
+
+			clonedData->_filterEvents = _filterEvents;
+			clonedData->_blackDetect_minDurationSecs = _blackDetect_minDurationSecs;
+			clonedData->_blackDetect_startTime = _blackDetect_startTime;
+			clonedData->_blackDetect_eventGenerated = _blackDetect_eventGenerated;
 
 			return clonedData;
 		}
@@ -131,6 +147,31 @@ public:
 			}
 		}
 
+		void addFilterEvent(const std::string& name)
+		{
+			std::unique_lock locker(_callbackDataMutex);
+			addFilterEventNoLock(name);
+		}
+
+		// durata minima (blackdetect=d=) che un nero deve avere per generare l'evento blackdetect
+		void setBlackMinDurationSecs(const std::optional<double> blackMinDurationSecs)
+		{
+			std::unique_lock locker(_callbackDataMutex);
+			_blackDetect_minDurationSecs = blackMinDurationSecs;
+		}
+
+		// ritorna l'evento (se ricevuto) e resetta le info relative all'evento
+		std::optional<FilterEvent> popFilterEvent(const std::string& name)
+		{
+			std::unique_lock locker(_callbackDataMutex);
+			const auto it = _filterEvents.find(name);
+			if (it == _filterEvents.end())
+				return std::nullopt;
+			FilterEvent filterEvent = std::move(it->second);
+			_filterEvents.erase(it);
+			return filterEvent;
+		}
+
 		void reset()
 		{
 			std::unique_lock locker(_callbackDataMutex);
@@ -165,6 +206,11 @@ public:
 			_ioEndOfFile.clear();
 
 			_signal = std::nullopt;
+
+			_filterEvents.clear();
+			_blackDetect_minDurationSecs = std::nullopt;
+			_blackDetect_startTime = std::nullopt;
+			_blackDetect_eventGenerated = false;
 
 			_finished = std::nullopt;
 
@@ -225,6 +271,18 @@ public:
 				}
 			}
 			root["errorMessages"] = errorMessagesRoot;
+
+			nlohmann::json filterEventsRoot = nlohmann::json::array();
+			for (const auto &[_name, _count, _firstReceivedTime] : _filterEvents | std::views::values)
+			{
+				nlohmann::json filterEventRoot;
+				filterEventRoot["name"] = _name;
+				filterEventRoot["count"] = _count;
+				filterEventRoot["firstReceivedTime"] = Datetime::timePointAsLocalString(_firstReceivedTime);
+				filterEventsRoot.push_back(filterEventRoot);
+			}
+			root["filterEvents"] = filterEventsRoot;
+
 			return root;
 		}
 
@@ -350,6 +408,60 @@ public:
 
         friend void FFMpegEngine::ffmpegLineCallback(const std::string_view&);
 
+		void addFilterEventNoLock(const std::string& name)
+		{
+			auto [it, inserted] = _filterEvents.try_emplace(name);
+			if (inserted)
+			{
+				it->second._name = name;
+				it->second._firstReceivedTime = std::chrono::system_clock::now();
+			}
+			it->second._count++;
+		}
+
+		// [Parsed_metadata_1 @ 0x...] lavfi.black_start=12.48
+		void blackDetect_started()
+		{
+			std::unique_lock locker(_callbackDataMutex);
+			_blackDetect_startTime = std::chrono::steady_clock::now();
+			_blackDetect_eventGenerated = false;
+		}
+
+		// [Parsed_metadata_2 @ 0x...] lavfi.black_end=15.6
+		void blackDetect_ended()
+		{
+			std::unique_lock locker(_callbackDataMutex);
+			_blackDetect_startTime = std::nullopt;
+		}
+
+		// [Parsed_blackdetect_0 @ 0x...] black_start:12.48 black_end:15.6 black_duration:3.12
+		// blackdetect logga questa riga solo se black_duration >= d. Copre il caso in cui il nero sia finito
+		// prima che checkBlackInProgress lo abbia rilevato (es.: encoding più veloce del real time)
+		// Ritorna true se l'evento è stato generato
+		bool blackDetect_durationReached()
+		{
+			std::unique_lock locker(_callbackDataMutex);
+			if (_blackDetect_eventGenerated)
+				return false;
+			addFilterEventNoLock("blackdetect");
+			_blackDetect_eventGenerated = true;
+			return true;
+		}
+
+		// chiamato ad ogni riga ricevuta da ffmpeg: genera l'evento se il nero è in corso da almeno d secondi
+		// Ritorna true se l'evento è stato generato
+		bool blackDetect_checkInProgress()
+		{
+			std::unique_lock locker(_callbackDataMutex);
+			if (!_blackDetect_startTime || _blackDetect_eventGenerated || !_blackDetect_minDurationSecs)
+				return false;
+			if (std::chrono::steady_clock::now() - *_blackDetect_startTime < std::chrono::duration<double>(*_blackDetect_minDurationSecs))
+				return false;
+			addFilterEventNoLock("blackdetect");
+			_blackDetect_eventGenerated = true;
+			return true;
+		}
+
 		std::shared_mutex _callbackDataMutex;
 
 		std::string _outputFfmpegPathFileName;
@@ -387,6 +499,14 @@ public:
 		std::deque<std::chrono::steady_clock::time_point> _ioEndOfFile;
 
 		std::optional<int32_t> _signal{};
+
+		// key: nome del filtro
+		std::unordered_map<std::string, FilterEvent> _filterEvents;
+
+		// blackdetect: un nero genera l'evento solo se dura almeno _blackDetect_minDurationSecs
+		std::optional<double> _blackDetect_minDurationSecs{};
+		std::optional<std::chrono::steady_clock::time_point> _blackDetect_startTime{}; // valorizzato se un nero è in corso
+		bool _blackDetect_eventGenerated{}; // evento già generato per il nero corrente
 
 		// nullopt se Data non è stato utilizzato
 		// false se viene usato ma non è ancora terminato
