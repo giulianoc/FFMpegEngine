@@ -455,9 +455,11 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 		if (callbackData->blackDetect_checkInProgress())
 			LOG_INFO("ffmpegLineCallback, filter event generated (black in progress)"
 				"{}"
-				", eventName: blackdetect "
-				", minDurationSecs: {}",
-				_referenceToLog, callbackData->_blackDetect_minDurationSecs ? *callbackData->_blackDetect_minDurationSecs : -1.0);
+				", eventName: blackdetect"
+				", minDurationSecs: {}"
+				", elapsedSecs: {}",
+				_referenceToLog, callbackData->_blackDetect_minDurationSecs ? *callbackData->_blackDetect_minDurationSecs : -1.0,
+				std::chrono::duration<double>(std::chrono::steady_clock::now() - *callbackData->_blackDetect_startTime).count());
 
 		if (!error && !filterLine)
 		{
