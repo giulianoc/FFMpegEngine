@@ -153,13 +153,6 @@ public:
 			addFilterEventNoLock(name);
 		}
 
-		// durata minima (blackdetect=d=) che un nero deve avere per generare l'evento blackdetect
-		void setBlackMinDurationSecs(const std::optional<double> blackMinDurationSecs)
-		{
-			std::unique_lock locker(_callbackDataMutex);
-			_blackDetect_minDurationSecs = blackMinDurationSecs;
-		}
-
 		// ritorna l'evento (se ricevuto) e resetta le info relative all'evento
 		std::optional<FilterEvent> popFilterEvent(const std::string& name)
 		{
@@ -171,6 +164,20 @@ public:
 			_filterEvents.erase(it);
 			return filterEvent;
 		}
+
+		// durata minima (blackdetect=d=) che un nero deve avere per generare l'evento blackdetect
+		void setBlackDetectMinDurationSecs(const std::optional<double> blackMinDurationSecs)
+		{
+			std::unique_lock locker(_callbackDataMutex);
+			_blackDetect_minDurationSecs = blackMinDurationSecs;
+		}
+
+		double getBlackDetectMinDurationSecs()
+		{
+			std::shared_lock locker(_callbackDataMutex);
+			return _blackDetect_minDurationSecs ? *_blackDetect_minDurationSecs : -1.0;
+		}
+
 
 		void reset()
 		{

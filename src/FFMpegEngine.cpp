@@ -254,7 +254,7 @@ void FFMpegEngine::run(const  std::string& ffmpegPath, ProcessUtility::ProcessId
 						blackMinDurationSecs = d;
 				}
 			}
-			(_clientCallbackData ? _clientCallbackData : _internalCallbackData)->setBlackMinDurationSecs(blackMinDurationSecs);
+			(_clientCallbackData ? _clientCallbackData : _internalCallbackData)->setBlackDetectMinDurationSecs(blackMinDurationSecs);
 		}
 
 		ProcessUtility::forkAndExecByCallback(
