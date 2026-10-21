@@ -318,78 +318,80 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 			}
 		}
 
-		// detect errors
-		bool error = false;
+		// detect errors/warnings
+		bool errorOrWarning = false;
 		{
-			const  std::string ffmpegLineLower = StringUtils::lowerCase(ffmpegLine);
+			const std::string ffmpegLineLower = StringUtils::lowerCase(ffmpegLine);
 
 			// known errors
-			for (auto &pattern : FFMpegEngine::CallbackData::errorPatterns)
 			{
-				if (ffmpegLineLower.find(pattern) != std::string::npos)
+				for (auto &pattern : CallbackData::errorOrWarningPatterns)
 				{
-					callbackData->pushErrorMessage(std::format("{} {}: {}",
-						Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true), pattern, ffmpegLine));
-					LOG_ERROR("ffmpegLineCallback, {} detected"
-						"{}"
-						", ffmpegLine: {}", pattern, _referenceToLog, ffmpegLine);
-					error = true;
-					if (callbackData->_ffmpegOutputLogFile)
+					if (ffmpegLineLower.find(pattern) != std::string::npos)
 					{
-						const  std::string dateInfo = std::format("[{}] ",
-							Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true));
-						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
-						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
-						callbackData->_ffmpegOutputLogFile.write("\n", 1);
-						callbackData->_ffmpegOutputLogFile.flush();
+						callbackData->pushErrorMessage(std::format("{} {}: {}",
+							Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true), pattern, ffmpegLine));
+						LOG_ERROR("ffmpegLineCallback, {} detected"
+							"{}"
+							", ffmpegLine: {}", pattern, _referenceToLog, ffmpegLine);
+						errorOrWarning = true;
+						if (callbackData->_ffmpegOutputLogFile)
+						{
+							const  std::string dateInfo = std::format("[{}] ",
+								Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true));
+							callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
+							callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
+							callbackData->_ffmpegOutputLogFile.write("\n", 1);
+							callbackData->_ffmpegOutputLogFile.flush();
+						}
 					}
 				}
-			}
-			if (!error)
-			{
-				// generic error
-				if (ffmpegLineLower.find("error") != std::string::npos)
+				if (!errorOrWarning)
 				{
-					callbackData->pushErrorMessage(std::format("{} error: {}",
-						Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true), ffmpegLine));
-					LOG_ERROR("ffmpegLineCallback, error detected"
-						"{}"
-						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
-					error = true;
-					if (callbackData->_ffmpegOutputLogFile)
+					// generic error
+					if (ffmpegLineLower.find("error") != std::string::npos)
 					{
-						const  std::string dateInfo = std::format("[{}] ",
-							Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true));
-						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
-						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
-						callbackData->_ffmpegOutputLogFile.write("\n", 1);
-						callbackData->_ffmpegOutputLogFile.flush();
+						callbackData->pushErrorMessage(std::format("{} error: {}",
+							Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true), ffmpegLine));
+						LOG_ERROR("ffmpegLineCallback, error detected"
+							"{}"
+							", ffmpegLine: {}", _referenceToLog, ffmpegLine);
+						errorOrWarning = true;
+						if (callbackData->_ffmpegOutputLogFile)
+						{
+							const  std::string dateInfo = std::format("[{}] ",
+								Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true));
+							callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
+							callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
+							callbackData->_ffmpegOutputLogFile.write("\n", 1);
+							callbackData->_ffmpegOutputLogFile.flush();
+						}
 					}
-				}
-				else if (ffmpegLineLower.find("signal") != std::string::npos
-					&& ffmpegLineLower.find("timefromsignal") == std::string::npos)
-				{
-					if (ffmpegLineLower.find("signal 3") !=  std::string::npos // SIGQUIT
-						|| ffmpegLineLower.find("signal: 3") !=  std::string::npos)
-						callbackData->_signal = 3;
-					else if (ffmpegLineLower.find("signal 15") !=  std::string::npos // SIGTERM
-						|| ffmpegLineLower.find("signal: 15") !=  std::string::npos)
-						callbackData->_signal = 15;
+					else if (ffmpegLineLower.find("signal") != std::string::npos
+						&& ffmpegLineLower.find("timefromsignal") == std::string::npos)
+					{
+						if (ffmpegLineLower.find("signal 3") !=  std::string::npos // SIGQUIT
+							|| ffmpegLineLower.find("signal: 3") !=  std::string::npos)
+							callbackData->_signal = 3;
+						else if (ffmpegLineLower.find("signal 15") !=  std::string::npos // SIGTERM
+							|| ffmpegLineLower.find("signal: 15") !=  std::string::npos)
+							callbackData->_signal = 15;
 
-					callbackData->pushErrorMessage(std::format("{} signal: {}",
-						Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true), ffmpegLine));
-					LOG_ERROR("ffmpegLineCallback, signal detected"
-						"{}"
-						", ffmpegLine: {}", _referenceToLog, ffmpegLine);
-					error = true;
-					if (callbackData->_ffmpegOutputLogFile)
-					{
-						const  std::string dateInfo = std::format("[{}] ",
-							Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true));
-						callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
-						callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
-						callbackData->_ffmpegOutputLogFile.write("\n", 1);
-						callbackData->_ffmpegOutputLogFile.flush();
+						callbackData->pushErrorMessage(std::format("{} signal: {}",
+							Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true), ffmpegLine));
+						LOG_ERROR("ffmpegLineCallback, signal detected"
+							"{}"
+							", ffmpegLine: {}", _referenceToLog, ffmpegLine);
+						errorOrWarning = true;
+						if (callbackData->_ffmpegOutputLogFile)
+						{
+							const  std::string dateInfo = std::format("[{}] ",
+								Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true));
+							callbackData->_ffmpegOutputLogFile.write(dateInfo.data(), dateInfo.size());
+							callbackData->_ffmpegOutputLogFile.write(ffmpegLine.data(), ffmpegLine.size());
+							callbackData->_ffmpegOutputLogFile.write("\n", 1);
+							callbackData->_ffmpegOutputLogFile.flush();
+						}
 					}
 				}
 			}
@@ -398,7 +400,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 		// detect filter lines
 		// Righe generate da blackdetect e dai filtri metadata aggiunti dopo blackdetect (vedi FFMpegFilters::getFilter):
 		bool filterLine = false;
-		if (!error && ffmpegLine.starts_with('[') && ffmpegLine.find(" @ ") != std::string_view::npos)
+		if (!errorOrWarning && ffmpegLine.starts_with('[') && ffmpegLine.find(" @ ") != std::string_view::npos)
 		{
 			bool eventGenerated = false;
 			if (ffmpegLine.find("lavfi.black_start=") != std::string_view::npos)
@@ -461,7 +463,7 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 				_referenceToLog, callbackData->_blackDetect_minDurationSecs ? *callbackData->_blackDetect_minDurationSecs : -1.0,
 				std::chrono::duration<double>(std::chrono::steady_clock::now() - *callbackData->_blackDetect_startTime).count());
 
-		if (!error && !filterLine)
+		if (!errorOrWarning && !filterLine)
 		{
 			if (auto pos = ffmpegLine.find('='); pos !=  std::string_view::npos)
 			{

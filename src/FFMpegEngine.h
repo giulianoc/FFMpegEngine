@@ -392,7 +392,8 @@ public:
 
 	private:
 		// lower case
-		inline static const std::vector<std::string> errorPatterns = {
+		inline static const std::vector<std::string> errorOrWarningPatterns = {
+			// errors
 			"invalid data found",
 			"error while decoding",
 			"connection refused",
@@ -410,7 +411,10 @@ public:
 			"404 not found",	// url not found
 			"ssl routines::tlsv1 alert internal error", // se si verifica questo error AND il prossimo, restart: combinazione di errori irreversibili
 			"unable to open resource",
-			"Segment .* failed too many times, skipping" // restart: errore irreversibile
+			"Segment .* failed too many times, skipping", // restart: errore irreversibile
+
+			// warnings
+			"Resumed reading at pts" // [aist#0:1/aac @ 0x63698b03fcc0] Resumed reading at pts 9.752 with rate 1.050 after a lag of 0.321s
 		};
 
         friend void FFMpegEngine::ffmpegLineCallback(const std::string_view&);
