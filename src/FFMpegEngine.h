@@ -93,9 +93,9 @@ public:
 				_errorMessages.pop();
 			_errorMessages.push(errorMessage);
 			const std::string lowerErrorMessage = StringUtils::lowerCase(errorMessage);
-			if (!_urlForbidden && lowerErrorMessage.starts_with("403 forbidden"))
+			if (!_urlForbidden && lowerErrorMessage.find("403 forbidden") != std::string::npos)
 				_urlForbidden = true;
-			if (!_urlNotFound && lowerErrorMessage.starts_with("404 not found"))
+			if (!_urlNotFound && lowerErrorMessage.find("404 not found") != std::string::npos)
 				_urlNotFound = true;
 			if (!_nonMonotonousDts && lowerErrorMessage.find("non-monotonous dts in output stream") != std::string::npos)
 				_nonMonotonousDts = true;
