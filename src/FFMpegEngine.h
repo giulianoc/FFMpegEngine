@@ -448,6 +448,32 @@ public:
 		// [Parsed_blackdetect_0 @ 0x...] black_start:12.48 black_end:15.6 black_duration:3.12
 		// blackdetect logga questa riga solo se black_duration >= d. Copre il caso in cui il nero sia finito
 		// prima che checkBlackInProgress lo abbia rilevato (es.: encoding più veloce del real time)
+		// Di seguito alcuni scenari:
+		// 1. Nero continuo (canale fermo su  nero per ore)
+		// 1.1. ffmpeg log
+		//      [Parsed_metadata_1 @ 0x...] lavfi.black_start=12.48
+		//      ...poi nessuna riga di blackdetect: il nero non finisce, quindi non arrivano black_end e black_duration.
+		//      L'evento lo genera blackDetect_checkInProgress() dopo d secondi
+		// 1.2. Workflow inviati (in FFMPEGEncoderDaemons.cpp)
+		//      1 solo, finché ffmpeg non riparte
+		// 2. Nero intermittente (es. nero ≥ d sec, poi qualche secondo di immagine, poi di nuovo nero...)
+		// 2.1. ffmpeg log
+		//      [Parsed_metadata_1 @ 0x...] lavfi.black_start=12.48
+		//      [Parsed_metadata_2 @ 0x...] lavfi.black_end=15.6
+		//      [Parsed_blackdetect_0 @0x...] black_start:12.48 black_end:15.6 black_duration:3.12
+		//      [Parsed_metadata_1 @ 0x...]lavfi.black_start=21.04
+		//      [Parsed_metadata_2 @ 0x...] lavfi.black_end=24.2
+		//      [Parsed_blackdetect_0 @ 0x...] black_start:21.04black_end:24.2 black_duration:3.16
+		// 2.2. Workflow inviati (in FFMPEGEncoderDaemons.cpp)
+		//     1 per episodio, fino a uno ogni ciclo del monitor (~15 s)
+		// 3. Nero continuo con ffmpeg che si riavvia (per il nero stesso o per altri motivi)
+		// 3.1. ffmpeg log
+		//      Run 1: [Parsed_metadata_1 @ 0x...] lavfi.black_start=0.04
+		//      Run 2: [Parsed_metadata_1 @ 0x...] lavfi.black_start=0.04
+		//      A ogni run c'è un nuovo black_start, senza black_end né black_duration.
+		//      I pts_time ripartono da circa 0.
+		// 3.2. Workflow inviati (in FFMPEGEncoderDaemons.cpp)
+		//      1 per ogni restart
 		// Ritorna true se l'evento è stato generato
 		bool blackDetect_durationReached()
 		{
