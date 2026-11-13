@@ -327,10 +327,12 @@ void FFMpegEngine::ffmpegLineCallback(const  std::string_view& ffmpegLine)
 			{
 				for (auto &pattern : CallbackData::errorOrWarningPatterns)
 				{
-					if (ffmpegLineLower.find(pattern) != std::string::npos)
+					if (auto patternLower = StringUtils::lowerCase(pattern);
+						ffmpegLineLower.find(patternLower) != std::string::npos)
 					{
 						callbackData->pushErrorMessage(std::format("{} {}: {}",
-							Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true), pattern, ffmpegLine));
+							Datetime::nowLocalTime("%Y-%m-%d %H:%M:%S.", true),
+							pattern, ffmpegLine));
 						LOG_ERROR("ffmpegLineCallback, {} detected"
 							"{}"
 							", ffmpegLine: {}", pattern, _referenceToLog, ffmpegLine);
